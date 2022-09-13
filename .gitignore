@@ -4,15 +4,15 @@ __pycache__/
 *$py.class
 
 # Cache Data
-results/
+results/*
 !results/.gitkeep
 data_raw/*
 !data_raw/.gitkeep
-# !/data_raw
-data_cache/
+data_cache/*
 !data_cache/.gitkeep
-notebooks/
+notebooks/*
 !notebooks/.gitkeep
+
 # C extensions
 *.so
 
