@@ -5,8 +5,8 @@ __pycache__/
 
 # Cache Data
 results/
-data_raw/*
-!data_raw/
+!/data_raw
+/data_raw/*
 data_cache/
 notebooks/
 
