@@ -4,10 +4,11 @@ __pycache__/
 *$py.class
 
 # Cache Data
-results/*
+results/
 data_raw/*
-data_cache/*
-notebooks/*
+!data_raw/
+data_cache/
+notebooks/
 
 # C extensions
 *.so
