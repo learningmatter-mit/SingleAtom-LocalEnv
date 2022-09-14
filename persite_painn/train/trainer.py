@@ -1,10 +1,11 @@
+import shutil
 import sys
 import time
-from typing import Dict, List
-import shutil
+from typing import Dict
+
 import torch
 from nff.utils.cuda import batch_to
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 MAX_EPOCHS = 100
 BEST_METRIC = 1e10
@@ -60,7 +61,6 @@ class Trainer:
     def train(
         self,
         device,
-        scheduler2=None,
         start_epoch=0,
         n_epochs=MAX_EPOCHS,
         best_loss=BEST_LOSS,
@@ -140,9 +140,10 @@ class Trainer:
                 print("Exit due to NaN")
                 sys.exit(1)
 
-            self.scheduler.step()
-            if scheduler2:
-                scheduler2.step(val_loss)
+            if isinstance(self.scheduler, ReduceLROnPlateau):
+                self.scheduler.step(val_loss)
+            else:
+                self.scheduler.step()
 
             is_best = val_loss < best_loss
             best_loss = min(val_loss, best_loss)
@@ -263,7 +264,7 @@ class Trainer:
         filename: str = "checkpoint.pth.tar",
     ):
         saving_filename = path + "/" + filename
-        best_filename = path + "/" + "model_best.pth.tar"
+        best_filename = path + "/" + "best_model.pth.tar"
         torch.save(state, saving_filename)
         if is_best:
             shutil.copyfile(saving_filename, best_filename)
