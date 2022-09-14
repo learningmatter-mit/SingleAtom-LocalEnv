@@ -15,7 +15,19 @@ setup(
     author="Hoje Chun",
     email="hoje.chun316@gmail.com",
     python_requires=">=3.9",
-    pacakages=find_packages("."),
+    pacakages=find_packages(
+        include=["persite_painn", "persite_painn.*"],
+        exclude=[
+            "data_cache",
+            "data_cache.*",
+            "data_raw",
+            "data_raw.*",
+            "notebooks",
+            "notebooks.*",
+            "results",
+            "results.*",
+        ],
+    ),
     description="Per-site PaiNN",
     long_description=read("README.md"),
 )

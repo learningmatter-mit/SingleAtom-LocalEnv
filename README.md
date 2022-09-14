@@ -12,7 +12,15 @@ git clone git@github.mit.edu:hojechun/per-site_PaiNN.git
 conda upgrade conda
 conda env create -f environment.yml
 ```
-3. Install
+3. Install NeuralForceField (nff)
 ```bash
+git clone https://github.com/learningmatter-mit/NeuralForceField.git
+# Go to the nff directory
+pip install .
+```
+
+4. Install
+```bash
+# Go to per-site_painn directory
 pip install .
 ```

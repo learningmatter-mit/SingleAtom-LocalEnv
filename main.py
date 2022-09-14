@@ -68,7 +68,7 @@ parser.add_argument(
 parser.add_argument("--momentum", default=0, type=float, help="momentum")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="weight decay")
 parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
-parser.add_argument("--sched", default="multi_step", type=str, help="scheduler")
+parser.add_argument("--sched", default="reduce_on_plateau", type=str, help="scheduler")
 parser.add_argument(
     "--lr_update_rate", default=30, type=int, help="learning rate update rate"
 )
