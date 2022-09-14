@@ -15,8 +15,8 @@ setup(
     author="Hoje Chun",
     email="hoje.chun316@gmail.com",
     python_requires=">=3.9",
-    pacakages=find_packages(
-        include=["persite_painn", "persite_painn.*"],
+    packages=find_packages(
+        ".",
         exclude=[
             "data_cache",
             "data_cache.*",
