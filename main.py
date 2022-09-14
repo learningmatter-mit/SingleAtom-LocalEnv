@@ -6,7 +6,7 @@ import sys
 
 import numpy as np
 import torch
-from nff.data import collate_dicts, split_train_validation_test
+from nff.data import collate_dicts
 from nff.utils.cuda import batch_to
 from torch.optim import SGD, Adam, Adadelta, AdamW, NAdam
 from torch.optim.lr_scheduler import (
@@ -18,7 +18,7 @@ from torch.optim.lr_scheduler import (
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler
 
-from persite_painn.data.dataset import PerSiteDataset
+from persite_painn.data.dataset import PerSiteDataset, split_train_validation_test
 from persite_painn.train import Trainer, get_model, Normalizer
 from persite_painn.train import (
     stmse_operation,
@@ -97,6 +97,12 @@ parser.add_argument(
     type=float,
     help="early stopping condition for train loss tolerance",
 )
+parser.add_argument(
+    "--seed",
+    default=None,
+    type=int,
+    help="Seed of random initialization to control the experiment",
+)
 args = parser.parse_args(sys.argv[1:])
 
 assert torch.cuda.is_available(), "cuda is not available"
@@ -123,7 +129,7 @@ def main():
         print(f"Number of Data: {len(dataset)}")
 
     train_set, val_set, test_set = split_train_validation_test(
-        dataset, val_size=args.val_size, test_size=args.test_size
+        dataset, val_size=args.val_size, test_size=args.test_size, seed=args.seed
     )
     # Load model_params
     with open(args.modelparams, "r") as f:
@@ -272,16 +278,6 @@ def main():
     )
     early_stop = [args.early_stop_val, args.early_stop_train]
 
-    # Temp
-    scheduler2 = ReduceLROnPlateau(
-        optimizer,
-        "min",
-        factor=0.2,
-        threshold=0.01,
-        verbose=True,
-        threshold_mode="abs",
-        patience=20,
-    )
     # set Trainer
     trainer = Trainer(
         model_path=args.savedir,
@@ -298,7 +294,6 @@ def main():
     # Train
     trainer.train(
         device=args.device,
-        scheduler2=scheduler2,
         start_epoch=args.start_epoch,
         n_epochs=args.epochs,
         best_loss=best_loss,
@@ -310,7 +305,7 @@ def main():
     test_targets = []
     test_preds = []
     test_ids = []
-    best_checkpoint = torch.load(f"{args.savedir}/model_best.pth.tar")
+    best_checkpoint = torch.load(f"{args.savedir}/best_model.pth.tar")
     model.load_state_dict(best_checkpoint["state_dict"])
 
     model.eval()

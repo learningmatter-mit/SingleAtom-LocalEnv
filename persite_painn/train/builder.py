@@ -4,7 +4,6 @@ while checking for the validity of hyperparameters.
 """
 
 import json
-import os
 
 import torch
 from persite_painn.nn.models import PainnAtomwise
@@ -86,9 +85,8 @@ def load_params(param_path):
     return params, model_type
 
 
-def load_model(path, params=None, model_type=None, **kwargs):
-    """Load pretrained model from the path. If no epoch is specified,
-            load the best model.
+def load_model(params_path, model_path, model_type="PainnAtomwise"):
+    """Load pretrained model from the path.
 
     Args:
             path (str): path where the model was trained.
@@ -97,39 +95,11 @@ def load_model(path, params=None, model_type=None, **kwargs):
                     in which you can't pickle the model directly.
             model_type (str, optional): name of the model to be used
     Returns:
-            model
+            model, best_checkoint
     """
-
-    try:
-        if os.path.isdir(path):
-            return torch.load(os.path.join(path, "best_model"), map_location="cpu")
-        elif os.path.exists(path):
-            return torch.load(path, map_location="cpu")
-        else:
-            raise FileNotFoundError("{} was not found".format(path))
-    except (FileNotFoundError, EOFError, RuntimeError):
-
-        param_path = os.path.join(path, "params.json")
-        if os.path.isfile(param_path):
-            params, model_type = load_params(param_path)
-
-        assert (
-            params is not None
-        ), "Must specify params if you want to load the state dict"
-        assert (
-            model_type is not None
-        ), "Must specify the model type if you want to load the state dict"
-
-        model = get_model(params, model_type=model_type, **kwargs)
-
-        if os.path.isdir(path):
-            state_dict = torch.load(
-                os.path.join(path, "best_model.pth.tar"), map_location="cpu"
-            )
-        elif os.path.exists(path):
-            state_dict = torch.load(path, map_location="cpu")
-        else:
-            raise FileNotFoundError("{} was not found".format(path))
-
-        model.load_state_dict(state_dict["model"], strict=False)
-        return model
+    modelparams = json.load(open(params_path))
+    model = get_model(modelparams, model_type=model_type)
+    best_checkpoint = torch.load(model_path)
+    model.load_state_dict(best_checkpoint["state_dict"])
+    model.eval()
+    return model, best_checkpoint
