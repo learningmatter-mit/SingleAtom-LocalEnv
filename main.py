@@ -61,12 +61,12 @@ parser.add_argument("-b", "--batch_size", default=64, type=int, help="mini-batch
 parser.add_argument("--loss_fn", default="SID", type=str, help="choose a loss fn")
 parser.add_argument("--metric_fn", default="STMSE", type=str, help="choose a metric fn")
 parser.add_argument("--optim", default="Adam", type=str, help="choose an optimizer")
-parser.add_argument("--lr", default=0.0007, type=float, help="initial learning rate")
+parser.add_argument("--lr", default=0.0005, type=float, help="initial learning rate")
 parser.add_argument(
     "--lr_milestones", default=[100], type=int, help="milestones for scheduler"
 )
-parser.add_argument("--momentum", default=1.2, type=float, help="momentum")
-parser.add_argument("--weight_decay", default=0, type=float, help="weight decay")
+parser.add_argument("--momentum", default=0, type=float, help="momentum")
+parser.add_argument("--weight_decay", default=0.01, type=float, help="weight decay")
 parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
 parser.add_argument("--sched", default="multi_step", type=str, help="scheduler")
 parser.add_argument(
@@ -87,13 +87,13 @@ parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
 parser.add_argument("--device", default="cuda", type=str, help="CPU or cuda")
 parser.add_argument(
     "--early_stop_val",
-    default=100,
+    default=50,
     type=int,
     help="early stopping condition for validation loss update count",
 )
 parser.add_argument(
     "--early_stop_train",
-    default=0.05,
+    default=0.03,
     type=float,
     help="early stopping condition for train loss tolerance",
 )
@@ -153,24 +153,24 @@ def main():
         print("SGD Optimizer")
         optimizer = SGD(
             trainable_params,
-            args.lr,
+            lr=args.lr,
             momentum=args.momentum,
             weight_decay=args.weight_decay,
         )
     elif args.optim == "Adam":
         print("Adam Optimizer")
         optimizer = Adam(
-            trainable_params, args.lr, eps=1e-08, weight_decay=args.weight_decay
+            trainable_params, lr=args.lr, eps=1e-06, weight_decay=args.weight_decay
         )
     elif args.optim == "Nadam":
         print("NAdam Optimizer")
         optimizer = NAdam(
-            trainable_params, args.lr, eps=1e-08, weight_decay=args.weight_decay
+            trainable_params, lr=args.lr, eps=1e-06, weight_decay=args.weight_decay
         )
     elif args.optim == "AdamW":
         print("AdamW Optimizer")
         optimizer = AdamW(
-            trainable_params, args.lr, eps=1e-08, weight_decay=args.weight_decay
+            trainable_params, lr=args.lr, eps=1e-06, weight_decay=args.weight_decay
         )
     elif args.optim == "Adadelta":
         print("Adadelta Optimizer")
@@ -250,11 +250,11 @@ def main():
         scheduler = ReduceLROnPlateau(
             optimizer,
             "min",
-            factor=0.2,
+            factor=0.5,
             threshold=0.01,
             verbose=True,
             threshold_mode="abs",
-            patience=20,
+            patience=10,
         )
     elif args.sched == "multi_step":
         print("Multi-step scheduler")
