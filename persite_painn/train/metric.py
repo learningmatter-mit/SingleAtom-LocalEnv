@@ -31,4 +31,6 @@ def mae_operation(
     """
     flattened_pred = prediction.view(1, -1)
     flattened_targ = target.view(1, -1)
+    flattened_pred = flattened_pred.to(torch_device)
+    flattened_targ = flattened_targ.to(torch_device)
     return torch.mean(torch.abs(flattened_pred - flattened_targ), dim=1)

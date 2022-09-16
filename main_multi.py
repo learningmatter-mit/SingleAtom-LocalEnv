@@ -18,8 +18,9 @@ from torch.optim.lr_scheduler import (
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler
 
-from persite_painn.data.dataset import PerSiteDataset, split_train_validation_test
-from persite_painn.train import Trainer, get_model, Normalizer
+from persite_painn.data.dataset import TotalDataset, split_train_validation_test
+from persite_painn.train import get_model, Normalizer
+from persite_painn.train.trainer_multi import Trainer
 from persite_painn.train import (
     stmse_operation,
     mae_operation,
@@ -58,8 +59,8 @@ parser.add_argument(
     help="manual epoch number (useful on restarts)",
 )
 parser.add_argument("-b", "--batch_size", default=64, type=int, help="mini-batch size")
-parser.add_argument("--loss_fn", default="SID", type=str, help="choose a loss fn")
-parser.add_argument("--metric_fn", default="STMSE", type=str, help="choose a metric fn")
+parser.add_argument("--loss_fn", default="MSE", type=str, help="choose a loss fn")
+parser.add_argument("--metric_fn", default="MAE", type=str, help="choose a metric fn")
 parser.add_argument("--optim", default="Adam", type=str, help="choose an optimizer")
 parser.add_argument("--lr", default=0.0005, type=float, help="initial learning rate")
 parser.add_argument(
@@ -75,12 +76,12 @@ parser.add_argument(
 parser.add_argument("--resume", default="", type=str, help="path to latest checkpoint")
 parser.add_argument(
     "--val_size",
-    default=0.15,
+    default=0.05,
     type=float,
     help="ratio of validation data to be loaded",
 )
 parser.add_argument(
-    "--test_size", default=0.15, type=float, help="ratio of test data to be loaded"
+    "--test_size", default=0.01, type=float, help="ratio of test data to be loaded"
 )
 parser.add_argument("--savedir", default="./results", type=str, help="saving directory")
 parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
@@ -113,6 +114,9 @@ CUDA_LAUNCH_BLOCKING = 1
 def main():
 
     global args
+    # Load model_params
+    with open(args.modelparams, "r") as f:
+        modelparams = json.load(f)
 
     # load data
     if os.path.exists(args.cache):
@@ -122,30 +126,30 @@ def main():
     else:
 
         data = pkl.load(open(args.path_to_data, "rb"))
-        samples = [[id_, struct] for id_, struct in data.items()]
-        dataset = PerSiteDataset(
+        samples = [
+            [id_, information["structure"], information["target"]]
+            for id_, information in data.items()
+        ]
+        dataset = TotalDataset(
             samples=samples,
-            prop_to_predict=args.site_prop,
+            prop_to_predict="site_prop",
             dataset_cache=args.cache,
-            cutoff=args.modelparams["cutoff"],
+            cutoff=modelparams["cutoff"],
         )
         print(f"Number of Data: {len(dataset)}")
 
     train_set, val_set, test_set = split_train_validation_test(
         dataset, val_size=args.val_size, test_size=args.test_size, seed=args.seed
     )
-    # Load model_params
-    with open(args.modelparams, "r") as f:
-        modelparams = json.load(f)
 
-    model = get_model(modelparams, model_type="PainnAtomwise")
+    model = get_model(modelparams, model_type="PainnMultifidelity")
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     # Normalizer
     if not modelparams["spectra"]:
         targs = []
         for batch in train_set:
-            targs.append(batch["site_prop"])
-        targs = torch.concat(targs, dim=0)
+            targs.append(batch["target"])
+        targs = torch.tensor(targs)
         normalizer = Normalizer(targs)
     else:
         normalizer = None
@@ -316,7 +320,7 @@ def main():
         use_device = args.device
         test_batch = batch_to(test_batch, use_device)
         # target
-        target = test_batch["site_prop"]
+        target = test_batch["target"]
 
         # Compute output
         output = model(test_batch)[args.site_prop]

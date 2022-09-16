@@ -6,10 +6,22 @@ while checking for the validity of hyperparameters.
 import json
 
 import torch
-from persite_painn.nn.models import PainnAtomwise
+from persite_painn.nn.models import PainnAtomwise, PainnMultifidelity
 
 PARAMS_TYPE = {
     "PainnAtomwise": {
+        "feat_dim": int,
+        "activation": str,
+        "n_rbf": int,
+        "cutoff": float,
+        "num_conv": int,
+        "output_keys": list,
+        "grad_keys": list,
+        "excl_vol": bool,
+        "V_ex_power": int,
+        "V_ex_sigma": float,
+    },
+    "PainnMultifidelity": {
         "feat_dim": int,
         "activation": str,
         "n_rbf": int,
@@ -25,6 +37,7 @@ PARAMS_TYPE = {
 
 MODEL_DICT = {
     "PainnAtomwise": PainnAtomwise,
+    "PainnMultifidelity": PainnMultifidelity,
 }
 
 

@@ -89,14 +89,15 @@ class Trainer:
                 batch = batch_to(batch, use_deivce)
                 # measure data loading time
                 data_time.update(time.time() - end)
-                target = batch["site_prop"]
+                target = batch["target"]
+
                 if self.normalizer is not None:
                     target = self.normalizer.norm(target)
                     target = target.to(device)
-
+                # print(f"target: {target.size()}")
                 output = self.model(batch)[self.output_key]
                 output = output.to(device)
-
+                # print(f"output: {output.size()}")
                 # output = torch.cat(self.model(batch)["features"])
 
                 loss = self.loss_fn(output, target, torch_device=device).mean()
@@ -208,13 +209,15 @@ class Trainer:
         # val_stmse_errors = []
         for val_batch in self.validation_loader:
             val_batch = batch_to(val_batch, use_device)
-            target = val_batch["site_prop"]
+            target = val_batch["target"]
             if self.normalizer is not None:
                 target = self.normalizer.norm(target)
                 target = target.to(device)
+
             # Compute output
             output = self.model(val_batch)[self.output_key]
             output = output.to(device)
+
             # output = torch.cat(self.model(batch)["features"])
 
             loss = self.loss_fn(output, target, torch_device=device).mean()
