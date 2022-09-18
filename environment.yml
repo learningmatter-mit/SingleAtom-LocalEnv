@@ -229,7 +229,6 @@ dependencies:
   - toml=0.10.2=pyhd8ed1ab_0
   - tomli=2.0.1=pyhd8ed1ab_0
   - torchaudio=0.11.0=py39_cu113
-  - torch-scatter=2.0.9=py39_cu113
   - torchvision=0.12.0=py39_cu113
   - tornado=6.1=py39hb9d737c_3
   - tqdm=4.64.0=pyhd8ed1ab_0
@@ -309,5 +308,6 @@ dependencies:
     - svgwrite==1.4.2
     - terminado==0.15.0
     - tinycss2==1.1.1
+    - torch-scatter==2.0.9
     - webencodings==0.5.1
     - widgetsnbextension==3.6.0
