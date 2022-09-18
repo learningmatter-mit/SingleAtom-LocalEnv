@@ -1,10 +1,11 @@
 import shutil
 import sys
 import time
-from typing import Dict
+from typing import Dict, List
 
+import numpy as np
 import torch
-from nff.utils.cuda import batch_to
+from persite_painn.utils.cuda import batch_to
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 MAX_EPOCHS = 100
@@ -71,7 +72,6 @@ class Trainer:
 
         # switch to train mode
         self.to(device)
-        use_deivce = device
         self.model.train()
         # train model
         train_losses = []
@@ -86,24 +86,19 @@ class Trainer:
             metrics = AverageMeter()
             end = time.time()
             for i, batch in enumerate(self.train_loader):
-                batch = batch_to(batch, use_deivce)
+                batch = batch_to(batch, device)
                 # measure data loading time
                 data_time.update(time.time() - end)
                 target = batch["target"]
 
                 if self.normalizer is not None:
                     target = self.normalizer.norm(target)
-                    target = target.to(device)
-                # print(f"target: {target.size()}")
                 output = self.model(batch)[self.output_key]
-                output = output.to(device)
-                # print(f"output: {output.size()}")
-                # output = torch.cat(self.model(batch)["features"])
 
-                loss = self.loss_fn(output, target, torch_device=device).mean()
+                loss = self.loss_fn(output, target).mean()
 
                 # measure accuracy and record loss
-                metric = self.metric_fn(output, target, torch_device=device).mean()
+                metric = self.metric_fn(output, target).mean()
                 losses.update(loss.data.cpu().item(), target.size(0))
                 metrics.update(metric.cpu().item(), target.size(0))
 
@@ -193,8 +188,8 @@ class Trainer:
 
     def validate(self, device, test=False):
         """Validate the current state of the model using the validation set"""
+        self.to(device=device)
         self.model.eval()
-        use_device = device
         batch_time = AverageMeter()
         losses = AverageMeter()
         metrics = AverageMeter()
@@ -205,25 +200,19 @@ class Trainer:
             test_ids = []
 
         end = time.time()
-        # val_losses = []
-        # val_stmse_errors = []
+
         for val_batch in self.validation_loader:
-            val_batch = batch_to(val_batch, use_device)
+            val_batch = batch_to(val_batch, device)
             target = val_batch["target"]
             if self.normalizer is not None:
                 target = self.normalizer.norm(target)
-                target = target.to(device)
 
             # Compute output
             output = self.model(val_batch)[self.output_key]
-            output = output.to(device)
 
-            # output = torch.cat(self.model(batch)["features"])
-
-            loss = self.loss_fn(output, target, torch_device=device).mean()
-            # loss = stmse(output, target_var, torch_device=device).mean()
+            loss = self.loss_fn(output, target).mean()
             # measure accuracy and record loss
-            metric = self.metric_fn(output, target, torch_device=device).mean()
+            metric = self.metric_fn(output, target).mean()
             losses.update(loss.data.cpu().item(), target.size(0))
             metrics.update(metric.cpu().item(), target.size(0))
 
@@ -278,3 +267,52 @@ class Trainer:
         self.model.device = device
         self.model.to(device)
         self.optimizer.load_state_dict(self.optimizer.state_dict())
+
+
+def test(model, output_key, test_loader, metric_fn, device, normalizer=None) -> List:
+    """Validate the current state of the model using the validation set"""
+    model.to(device)
+    model.eval()
+    test_targets = []
+    test_preds = []
+    test_ids = []
+
+    metrics = AverageMeter()
+    for batch in test_loader:
+        batch = batch_to(batch, device)
+        target = batch["target"]
+        if normalizer is not None:
+            target = normalizer.norm(target)
+
+        # Compute output
+        output = model(batch)[output_key]
+
+        # measure accuracy and record loss
+        metric = metric_fn(output, target).mean()
+
+        metrics.update(metric.cpu().item(), target.size(0))
+
+        test_pred = output.detach().data.cpu()
+        test_target = target.detach().cpu()
+        if test_target.shape[0] == batch["name"].shape[0]:
+            test_preds += test_pred.view(-1).tolist()
+            test_targets += test_target.view(-1).tolist()
+
+        elif test_target.shape[0] == batch["nxyz"].shape[0]:
+            batch_ids = []
+            count = 0
+            num_bin = []
+            for i, val in enumerate(batch["num_atoms"].detach().cpu().numpy()):
+                count += val
+                num_bin.append(count)
+                if i == 0:
+                    change = list(np.arange(val))
+                else:
+                    adding_val = num_bin[i - 1]
+                    change = list(np.arange(val) + adding_val)
+                batch_ids.append(change)
+            test_preds += [test_pred[i].tolist() for i in batch_ids]
+            test_targets += [test_target[i].tolist() for i in batch_ids]
+        test_ids += batch["name"].detach().tolist()
+
+    return test_preds, test_targets, test_ids

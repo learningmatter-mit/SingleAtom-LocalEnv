@@ -90,8 +90,8 @@ def plot_hexbin(
     ax.axline((0, 0), (1, 1), color="#000000", zorder=-1, linewidth=0.5)
 
     hb = ax.hexbin(
-        targ,
         pred,
+        targ,
         cmap=cmap,
         gridsize=60,
         bins=bins,
@@ -129,8 +129,8 @@ def plot_hexbin(
             ax.plot(x, y, color="#000000", zorder=2, linewidth=0.5, linestyle="--")
 
     ax.set_title(title, fontsize=14)
-    ax.set_ylabel("Predicted %s [%s]" % (props[key], units[key]), fontsize=12)
-    ax.set_xlabel("Calculated %s [%s]" % (props[key], units[key]), fontsize=12)
+    ax.set_ylabel("Calculated %s [%s]" % (props[key], units[key]), fontsize=12)
+    ax.set_xlabel("Predicted %s [%s]" % (props[key], units[key]), fontsize=12)
 
     ax.annotate(
         "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, units[key]),

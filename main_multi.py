@@ -7,33 +7,35 @@ import sys
 import numpy as np
 import torch
 from nff.data import collate_dicts
-from nff.utils.cuda import batch_to
 from torch.optim import SGD, Adam, Adadelta, AdamW, NAdam, RAdam
-from torch.optim.lr_scheduler import (
-    CosineAnnealingLR,
-    CosineAnnealingWarmRestarts,
-    MultiStepLR,
-    ReduceLROnPlateau,
-)
+
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler
 
-from persite_painn.data.dataset import TotalDataset, split_train_validation_test
-from persite_painn.train import get_model, Normalizer
-from persite_painn.train.trainer_multi import Trainer
+from persite_painn.data.builder import build_dataset, split_train_validation_test
+from persite_painn.nn.builder import get_model
+from persite_painn.train.builder import get_scheduler, get_optimizer
+from persite_painn.utils.train_utils import Normalizer
+
+# from persite_painn.train import get_model, Normalizer
+from persite_painn.train.trainer_multi import Trainer, test
 from persite_painn.train import (
     stmse_operation,
     mae_operation,
     mse_operation,
     sid_operation,
-    sis_operation,
+    # sis_operation,
 )
 
-parser = argparse.ArgumentParser(
-    description="Per-site Crystal Graph Convolutional Neural Networks"
+parser = argparse.ArgumentParser(description="Per-site PaiNN")
+parser.add_argument("--data", default="", type=str, help="path to data")
+parser.add_argument("--target", help="name of target to predict")
+parser.add_argument(
+    "--site_prediction",
+    action="store_true",
+    default=False,
+    help="whether to predict site properties",
 )
-parser.add_argument("path_to_data", help="path to directory with data")
-parser.add_argument("--site_prop", help="name of site property to predict")
 parser.add_argument(
     "--cache",
     default="dataset_cache",
@@ -41,8 +43,8 @@ parser.add_argument(
     help="cache where data is / will be stored",
 )
 parser.add_argument(
-    "--modelparams",
-    default="modelparams.json",
+    "--details",
+    default="details.json",
     type=str,
     help="json file of model parameters",
 )
@@ -76,12 +78,12 @@ parser.add_argument(
 parser.add_argument("--resume", default="", type=str, help="path to latest checkpoint")
 parser.add_argument(
     "--val_size",
-    default=0.05,
+    default=0.1,
     type=float,
     help="ratio of validation data to be loaded",
 )
 parser.add_argument(
-    "--test_size", default=0.01, type=float, help="ratio of test data to be loaded"
+    "--test_size", default=0.1, type=float, help="ratio of test data to be loaded"
 )
 parser.add_argument("--savedir", default="./results", type=str, help="saving directory")
 parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
@@ -106,83 +108,63 @@ parser.add_argument(
 )
 args = parser.parse_args(sys.argv[1:])
 
-assert torch.cuda.is_available(), "cuda is not available"
-torch.cuda.set_device(args.cuda)
-CUDA_LAUNCH_BLOCKING = 1
-
 
 def main():
 
     global args
     # Load model_params
-    with open(args.modelparams, "r") as f:
-        modelparams = json.load(f)
-
+    with open(args.details, "r") as f:
+        json_details = json.load(f)
+        details = json_details["details"]
+        modelparams = json_details["modelparams"]
     # load data
     if os.path.exists(args.cache):
         print("Cached dataset exists...")
         dataset = torch.load(args.cache)
         print(f"Number of Data: {len(dataset)}")
     else:
-
-        data = pkl.load(open(args.path_to_data, "rb"))
-        samples = [
-            [id_, information["structure"], information["target"]]
-            for id_, information in data.items()
-        ]
-        dataset = TotalDataset(
-            samples=samples,
-            prop_to_predict="site_prop",
-            dataset_cache=args.cache,
-            cutoff=modelparams["cutoff"],
-        )
-        print(f"Number of Data: {len(dataset)}")
+        try:
+            data = pkl.load(open(args.path_to_data, "rb"))
+        except ValueError:
+            print("Path to data should be given --data")
+        else:
+            dataset = build_dataset(
+                raw_data=data,
+                prop_to_predict=args.target,
+                cutoff=modelparams["cutoff"],
+                site_prediction=args.site_prediction,
+                seed=args.seed,
+            )
+            print(f"Number of Data: {len(dataset)}")
+            print("Done creating dataset, caching...")
+            dataset.save(args.cache)
+            print("Done caching dataset")
 
     train_set, val_set, test_set = split_train_validation_test(
         dataset, val_size=args.val_size, test_size=args.test_size, seed=args.seed
     )
 
-    model = get_model(modelparams, model_type="PainnMultifidelity")
+    model = get_model(modelparams, model_type="Painn")
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     # Normalizer
-    if not modelparams["spectra"]:
+    if not details["spectra"]:
         targs = []
         for batch in train_set:
             targs.append(batch["target"])
-        targs = torch.tensor(targs)
+        targs = torch.concat(targs).view(-1)
         normalizer = Normalizer(targs)
     else:
         normalizer = None
     model.cuda()
 
     # Set optimizer
-    if args.optim == "SGD":
-        print("SGD Optimizer")
-        optimizer = SGD(
-            trainable_params,
-            lr=args.lr,
-            momentum=args.momentum,
-            weight_decay=args.weight_decay,
-        )
-    elif args.optim == "Adam":
-        print("Adam Optimizer")
-        optimizer = Adam(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
-    elif args.optim == "Nadam":
-        print("NAdam Optimizer")
-        optimizer = NAdam(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
-    elif args.optim == "AdamW":
-        print("AdamW Optimizer")
-        optimizer = AdamW(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
-    elif args.optim == "Adadelta":
-        print("Adadelta Optimizer")
-        optimizer = Adadelta(
-            trainable_params, lr=args.lr, weight_decay=args.weight_decay
-        )
-    elif args.optim == "Radam":
-        print("RAdam Optimizer")
-        optimizer = RAdam(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
-    else:
-        raise NameError("Optimizer not implemented --optim")
+    optimizer = get_optimizer(
+        optim=args.optim,
+        trainable_params=trainable_params,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+    )
+
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -238,38 +220,13 @@ def main():
         metric_fn = stmse_operation
     elif args.metric_fn == "MAE":
         metric_fn = mae_operation
-    elif args.metric_fn == "SIS":
-        metric_fn = sis_operation
+    # elif args.metric_fn == "SIS":
+    #     metric_fn = sis_operation
     else:
         raise NameError("Only STMSE or MAE or SIS is allowed as --metric_fn")
     # Set scheduler
-    if args.sched == "cos_anneal":
-        print("Cosine anneal scheduler")
-        scheduler = CosineAnnealingLR(optimizer, args.lr_update_rate)
-    elif args.sched == "cos_anneal_warm_restart":
-        print("Cosine anneal with warm restarts scheduler")
-        scheduler = CosineAnnealingWarmRestarts(optimizer, args.lr_update_rate)
-    elif args.sched == "reduce_on_plateau":
-        print("Reduce on plateau scheduler")
-        scheduler = ReduceLROnPlateau(
-            optimizer,
-            "min",
-            factor=0.5,
-            threshold=0.01,
-            verbose=True,
-            threshold_mode="abs",
-            patience=10,
-        )
-    elif args.sched == "multi_step":
-        print("Multi-step scheduler")
-        lr_milestones = np.arange(
-            args.lr_update_rate, args.epochs + args.lr_update_rate, args.lr_update_rate
-        )
-        scheduler = MultiStepLR(optimizer, milestones=lr_milestones, gamma=0.1)
-    else:
-        raise NameError(
-            "Choose --sched within cos_anneal, reduce_on_plateau, multi_stp"
-        )
+    scheduler = get_scheduler(sched=args.sched, optimizer=optimizer, epochs=args.epochs)
+
     # Set DataLoader
     train_loader = DataLoader(
         train_set,
@@ -292,7 +249,7 @@ def main():
         scheduler=scheduler,
         train_loader=train_loader,
         validation_loader=val_loader,
-        output_key=args.site_prop,
+        output_key=args.target,
         normalizer=normalizer,
     )
     # Train
@@ -312,41 +269,17 @@ def main():
     best_checkpoint = torch.load(f"{args.savedir}/best_model.pth.tar")
     model.load_state_dict(best_checkpoint["state_dict"])
 
-    model.eval()
     test_loader = DataLoader(
         test_set, batch_size=args.batch_size, collate_fn=collate_dicts
     )
-    for test_batch in test_loader:
-        use_device = args.device
-        test_batch = batch_to(test_batch, use_device)
-        # target
-        target = test_batch["target"]
-
-        # Compute output
-        output = model(test_batch)[args.site_prop]
-        test_target = target.detach().cpu()
-        if normalizer is not None:
-            test_output = normalizer.denorm(output.detach().cpu())
-        else:
-            test_output = output.detach().cpu()
-
-        # Batch_ids
-        batch_ids = []
-        count = 0
-        num_bin = []
-        for i, val in enumerate(test_batch["num_atoms"].detach().cpu().numpy()):
-            count += val
-            num_bin.append(count)
-            if i == 0:
-                change = list(np.arange(val))
-            else:
-                adding_val = num_bin[i - 1]
-                change = list(np.arange(val) + adding_val)
-            batch_ids.append(change)
-
-        test_targets += [test_target[i].numpy() for i in batch_ids]
-        test_preds += [test_output[i].numpy() for i in batch_ids]
-        test_ids += test_batch["name"].detach().tolist()
+    test_targets, test_preds, test_ids = test(
+        model=model,
+        output_key=args.output_keys,
+        test_loader=test_loader,
+        metric_fn=metric_fn,
+        device=args.device,
+        normalizer=normalizer,
+    )
 
     # Save Results
     pkl.dump(test_preds, open(f"{args.savedir}/test_preds.pkl", "wb"))
@@ -364,4 +297,7 @@ def main():
 
 
 if __name__ == "__main__":
+    assert torch.cuda.is_available(), "cuda is not available"
+    torch.cuda.set_device(args.cuda)
+    CUDA_LAUNCH_BLOCKING = 1
     main()

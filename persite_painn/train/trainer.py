@@ -4,7 +4,7 @@ import time
 from typing import Dict
 
 import torch
-from nff.utils.cuda import batch_to
+from persite_painn.utils.cuda import batch_to
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 MAX_EPOCHS = 100
@@ -71,7 +71,6 @@ class Trainer:
 
         # switch to train mode
         self.to(device)
-        use_deivce = device
         self.model.train()
         # train model
         train_losses = []
@@ -86,7 +85,7 @@ class Trainer:
             metrics = AverageMeter()
             end = time.time()
             for i, batch in enumerate(self.train_loader):
-                batch = batch_to(batch, use_deivce)
+                batch = batch_to(batch, device)
                 # measure data loading time
                 data_time.update(time.time() - end)
                 target = batch["site_prop"]

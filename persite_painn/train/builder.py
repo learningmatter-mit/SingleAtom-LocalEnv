@@ -1,118 +1,74 @@
-"""
-Helper functions to create models, functions and other classes
-while checking for the validity of hyperparameters.
-"""
-
-import json
-
-import torch
-from persite_painn.nn.models import PainnAtomwise, PainnMultifidelity
-
-PARAMS_TYPE = {
-    "PainnAtomwise": {
-        "feat_dim": int,
-        "activation": str,
-        "n_rbf": int,
-        "cutoff": float,
-        "num_conv": int,
-        "output_keys": list,
-        "grad_keys": list,
-        "excl_vol": bool,
-        "V_ex_power": int,
-        "V_ex_sigma": float,
-    },
-    "PainnMultifidelity": {
-        "feat_dim": int,
-        "activation": str,
-        "n_rbf": int,
-        "cutoff": float,
-        "num_conv": int,
-        "output_keys": list,
-        "grad_keys": list,
-        "excl_vol": bool,
-        "V_ex_power": int,
-        "V_ex_sigma": float,
-    },
-}
-
-MODEL_DICT = {
-    "PainnAtomwise": PainnAtomwise,
-    "PainnMultifidelity": PainnMultifidelity,
-}
+import numpy as np
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR,
+    CosineAnnealingWarmRestarts,
+    MultiStepLR,
+    ReduceLROnPlateau,
+)
+from torch.optim import SGD, Adam, Adadelta, AdamW, NAdam, RAdam
 
 
-class ParameterError(Exception):
-    """Raised when a hyperparameter is of incorrect type"""
+def get_optimizer(
+    optim: str,
+    trainable_params,
+    lr: float,
+    weight_decay: float,
+):
+    if optim == "SGD":
+        print("SGD Optimizer")
+        optimizer = SGD(
+            trainable_params,
+            lr=lr,
+            momentum=0.0,
+            weight_decay=weight_decay,
+        )
+    elif optim == "Adam":
+        print("Adam Optimizer")
+        optimizer = Adam(trainable_params, lr=lr, weight_decay=weight_decay)
+    elif optim == "Nadam":
+        print("NAdam Optimizer")
+        optimizer = NAdam(trainable_params, lr=lr, weight_decay=weight_decay)
+    elif optim == "AdamW":
+        print("AdamW Optimizer")
+        optimizer = AdamW(trainable_params, lr=lr, weight_decay=weight_decay)
+    elif optim == "Adadelta":
+        print("Adadelta Optimizer")
+        optimizer = Adadelta(trainable_params, lr=lr, weight_decay=weight_decay)
+    elif optim == "Radam":
+        print("RAdam Optimizer")
+        optimizer = RAdam(trainable_params, lr=lr, weight_decay=weight_decay)
+    else:
+        raise NameError("Optimizer not implemented --optim")
 
-    pass
-
-
-def check_parameters(params_type, params):
-    """Check whether the parameters correspond to the specified types
-
-    Args:
-            params (dict)
-    """
-    for key, val in params.items():
-        if val is None:
-            continue
-        if key in params_type and not isinstance(val, params_type[key]):
-            raise ParameterError("%s is not %s" % (str(key), params_type[key]))
-
-        for model in PARAMS_TYPE.keys():
-            if key == "{}_params".format(model.lower()):
-                check_parameters(PARAMS_TYPE[model], val)
-
-
-def get_model(params, model_type="PainnAtomwise", **kwargs):
-    """Create new model with the given parameters.
-
-    Args:
-            params (dict): parameters used to construct the model
-            model_type (str): name of the model to be used
-
-    Returns:
-            model (nff.nn.models)
-    """
-
-    check_parameters(PARAMS_TYPE[model_type], params)
-    model = MODEL_DICT[model_type](params, **kwargs)
-
-    return model
+    return optimizer
 
 
-def load_params(param_path):
-    with open(param_path, "r") as f:
-        info = json.load(f)
-    keys = ["details", "modelparams"]
-    params = None
-    for key in keys:
-        if key in info:
-            params = info[key]
-            break
-    if params is None:
-        params = info
-
-    model_type = params["model_type"]
-
-    return params, model_type
-
-
-def load_model(params_path, model_path, model_type="PainnAtomwise"):
-    """Load pretrained model from the path.
-
-    Args:
-            path (str): path where the model was trained.
-            params (dict, optional): Any parameters you need to instantiate
-                    a model before loading its state dict. This is required for DimeNet,
-                    in which you can't pickle the model directly.
-            model_type (str, optional): name of the model to be used
-    Returns:
-            model, best_checkoint
-    """
-    modelparams = json.load(open(params_path))
-    model = get_model(modelparams, model_type=model_type)
-    best_checkpoint = torch.load(model_path)
-    model.load_state_dict(best_checkpoint["state_dict"])
-    model.eval()
-    return model, best_checkpoint
+def get_scheduler(
+    sched: str, optimizer, epochs, lr_update_rate=30, lr_milestones=[100]
+):
+    if sched == "cos_anneal":
+        print("Cosine anneal scheduler")
+        scheduler = CosineAnnealingLR(optimizer, lr_update_rate)
+    elif sched == "cos_anneal_warm_restart":
+        print("Cosine anneal with warm restarts scheduler")
+        scheduler = CosineAnnealingWarmRestarts(optimizer, lr_update_rate)
+    elif sched == "reduce_on_plateau":
+        print("Reduce on plateau scheduler")
+        scheduler = ReduceLROnPlateau(
+            optimizer,
+            "min",
+            factor=0.5,
+            threshold=0.01,
+            verbose=True,
+            threshold_mode="abs",
+            patience=15,
+        )
+    elif sched == "multi_step":
+        print("Multi-step scheduler")
+        lr_milestones = np.arange(
+            lr_update_rate, epochs + lr_update_rate, lr_update_rate
+        )
+        scheduler = MultiStepLR(optimizer, milestones=lr_milestones, gamma=0.1)
+    else:
+        raise NameError("Choose within cos_anneal, reduce_on_plateau, multi_stp")
+    return scheduler
