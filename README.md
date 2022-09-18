@@ -15,6 +15,7 @@ git clone git@github.mit.edu:hojechun/per-site_PaiNN.git
 ```bash
 conda upgrade conda
 conda env create -f environment.yml
+conda activate persitePainn
 ```
 
 3. Install NeuralForceField (nff)
