@@ -9,10 +9,10 @@ from torch.optim import SGD, Adam, Adadelta, AdamW, NAdam, RAdam
 
 
 def get_optimizer(
-    optim: str,
+    optim,
     trainable_params,
-    lr: float,
-    weight_decay: float,
+    lr,
+    weight_decay,
 ):
     if optim == "SGD":
         print("SGD Optimizer")
@@ -43,9 +43,7 @@ def get_optimizer(
     return optimizer
 
 
-def get_scheduler(
-    sched: str, optimizer, epochs, lr_update_rate=30, lr_milestones=[100]
-):
+def get_scheduler(sched, optimizer, epochs, lr_update_rate=30, lr_milestones=[100]):
     if sched == "cos_anneal":
         print("Cosine anneal scheduler")
         scheduler = CosineAnnealingLR(optimizer, lr_update_rate)
