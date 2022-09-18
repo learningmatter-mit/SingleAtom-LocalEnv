@@ -16,12 +16,11 @@ POOL_DIC = {
 
 
 class Painn(nn.Module):
-    def __init__(self, modelparams):
+
+    def __init__(self, modelparams, **kwargs):
         """
         Args:
             modelparams (dict): dictionary of model parameters
-
-
 
         """
 
@@ -29,6 +28,7 @@ class Painn(nn.Module):
 
         feat_dim = modelparams["feat_dim"]
         activation = modelparams["activation"]
+        activation_f = modelparams["activation_f"]
         n_rbf = modelparams["n_rbf"]
         cutoff = modelparams["cutoff"]
         num_conv = modelparams["num_conv"]
@@ -40,63 +40,76 @@ class Painn(nn.Module):
         means = modelparams.get("means")
         stddevs = modelparams.get("stddevs")
         pool_dic = modelparams.get("pool_dic")
-        self.graph_prediction = modelparams.get("pool", True)
-        self.multifideltiy = modelparams.get("multifidelity", False)
+        self.site_prediction = kwargs["site_prediction"]
+        self.multifideltiy = kwargs["multifidelity"]
         output_atom_fea_dim = modelparams["atom_fea_len"]
         num_conv = modelparams["num_conv"]
 
         self.embed_block = EmbeddingBlock(feat_dim=feat_dim)
-        self.message_blocks = nn.ModuleList(
-            [
-                MessageBlock(
-                    feat_dim=feat_dim,
-                    activation=activation,
-                    n_rbf=n_rbf,
-                    cutoff=cutoff,
-                    learnable_k=learnable_k,
-                    dropout=conv_dropout,
-                )
-                for _ in range(num_conv)
-            ]
-        )
-        self.update_blocks = nn.ModuleList(
-            [
-                UpdateBlock(
-                    feat_dim=feat_dim, activation=activation, dropout=conv_dropout
-                )
-                for _ in range(num_conv)
-            ]
-        )
-        self.readout_block = ReadoutBlock(
-            feat_dim=feat_dim,
-            output_atom_fea=output_atom_fea_dim,
-            output_keys=self.output_keys,
-            activation=activation,
-            dropout=readout_dropout,
-            means=means,
-            stddevs=stddevs,
-            scale=True,
-        )
+        self.message_blocks = nn.ModuleList([
+            MessageBlock(
+                feat_dim=feat_dim,
+                activation=activation,
+                n_rbf=n_rbf,
+                cutoff=cutoff,
+                learnable_k=learnable_k,
+                dropout=conv_dropout,
+            ) for _ in range(num_conv)
+        ])
+        self.update_blocks = nn.ModuleList([
+            UpdateBlock(feat_dim=feat_dim,
+                        activation=activation,
+                        dropout=conv_dropout) for _ in range(num_conv)
+        ])
+        if self.multifideltiy:
+            self.readout_block = ReadoutBlock(
+                feat_dim=feat_dim,
+                output_atom_fea=output_atom_fea_dim,
+                output_keys=self.output_keys,
+                activation=activation,
+                dropout=readout_dropout,
+                means=means,
+                stddevs=stddevs,
+                scale=True,
+            )
+        else:
+            self.readout_block = ReadoutBlock(
+                feat_dim=feat_dim,
+                output_atom_fea=output_atom_fea_dim,
+                output_keys=self.output_keys,
+                activation=activation,
+                dropout=readout_dropout,
+                means=means,
+                stddevs=stddevs,
+                scale=False,
+            )
 
         # Fully connected layers
         n_h = modelparams["n_h"]
         h_fea_len = modelparams["h_fea_len"]
         n_outputs = modelparams["n_outputs"]
+        self.force_positive = kwargs["spectra"]
         if self.multifideltiy:
             n_fidelity = modelparams["n_fidelity"]
-            self.conv_to_fc = nn.Linear(output_atom_fea_dim + n_fidelity, h_fea_len)
+            self.fullyconnected = FullyConnected(
+                output_atom_fea_dim=output_atom_fea_dim + n_fidelity,
+                h_fea_len=h_fea_len,
+                n_h=n_h,
+                activation=activation_f,
+                n_outputs=n_outputs,
+                dropout=fc_dropout,
+                force_positive=self.force_positive,
+            )
         else:
-            self.conv_to_fc = nn.Linear(output_atom_fea_dim, h_fea_len)
-        self.conv_to_fc_softplus = nn.Softplus()
-        self.force_positive = modelparams.get("force_positive", True)
-        self.fullyconnected = FullyConnected(
-            n_h=n_h,
-            activation="softplus",
-            h_fea_len=h_fea_len,
-            n_outputs=n_outputs,
-            dropout=fc_dropout,
-            force_positive=self.force_positive,
-        )
+            self.fullyconnected = FullyConnected(
+                output_atom_fea_dim=output_atom_fea_dim,
+                h_fea_len=h_fea_len,
+                n_h=n_h,
+                activation=activation_f,
+                n_outputs=n_outputs,
+                dropout=fc_dropout,
+                force_positive=self.force_positive,
+            )
 
         if pool_dic is None:
             self.pool_dic = {key: SumPool() for key in self.output_keys}
@@ -132,16 +145,20 @@ class Painn(nn.Module):
         # get r_ij including offsets and excluding
         # anything in the neighbor skin
         self.set_cutoff()
-        r_ij, nbrs = get_rij(xyz=xyz, batch=batch, nbrs=nbrs, cutoff=self.cutoff)
+        r_ij, nbrs = get_rij(xyz=xyz,
+                             batch=batch,
+                             nbrs=nbrs,
+                             cutoff=self.cutoff)
 
         s_i, v_i = self.embed_block(z_numbers, nbrs=nbrs, r_ij=r_ij)
         results = {}
 
         for i, message_block in enumerate(self.message_blocks):
             update_block = self.update_blocks[i]
-            ds_message, dv_message = message_block(
-                s_j=s_i, v_j=v_i, r_ij=r_ij, nbrs=nbrs
-            )
+            ds_message, dv_message = message_block(s_j=s_i,
+                                                   v_j=v_i,
+                                                   r_ij=r_ij,
+                                                   nbrs=nbrs)
 
             s_i = s_i + ds_message
             v_i = v_i + dv_message
@@ -188,7 +205,7 @@ class Painn(nn.Module):
                 new_val = torch.cat((persite_props, val), dim=1)
                 new_atomwise_out[key] = new_val
             atomwise_out = new_atomwise_out
-        if self.graph_prediction:
+        if not self.site_prediction:
             all_results = self.pool(
                 batch=batch,
                 atomwise_out=atomwise_out,
@@ -197,15 +214,14 @@ class Painn(nn.Module):
             all_results = atomwise_out
         results = {}
         for key, val in all_results.items():
-            val = self.conv_to_fc_softplus(self.conv_to_fc(val))
             out = self.fullyconnected(val)
             results[key] = out
 
-            if inference:
-                # import here to avoid circular imports
-                from persite_painn.utils.cuda import batch_detach
+        if inference:
+            # import here to avoid circular imports
+            from persite_painn.utils.cuda import batch_detach
 
-                results = batch_detach(results)
+            results = batch_detach(results)
 
         return results
 

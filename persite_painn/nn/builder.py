@@ -12,6 +12,7 @@ PARAMS_TYPE = {
     "Painn": {
         "feat_dim": int,
         "activation": str,
+        "activation_f": str,
         "n_rbf": int,
         "cutoff": float,
         "num_conv": int,
@@ -20,6 +21,7 @@ PARAMS_TYPE = {
         "h_fea_len": int,
         "n_outputs": int,
         "output_keys": list,
+        "site_prediction": bool,
     },
 }
 
@@ -66,22 +68,15 @@ def get_model(params, model_type="Painn", **kwargs):
     return model
 
 
-# TODO: Use this to fix params.json
 def load_params(param_path):
     with open(param_path, "r") as f:
         info = json.load(f)
-    keys = ["details", "modelparams"]
-    params = None
-    for key in keys:
-        if key in info:
-            params = info[key]
-            break
-    if params is None:
-        params = info
 
-    model_type = params["model_type"]
+    details = info["details"]
+    params = info["modelparams"]
+    model_type = info["modeltype"]
 
-    return params, model_type
+    return details, params, model_type
 
 
 def load_model(params_path, model_path, model_type="Painn"):
@@ -96,8 +91,12 @@ def load_model(params_path, model_path, model_type="Painn"):
     Returns:
             model, best_checkoint
     """
-    modelparams = json.load(open(params_path))
-    model = get_model(modelparams, model_type=model_type)
+    details, params, model_type = load_params(params_path)
+    model = get_model(params,
+                      model_type=model_type,
+                      site_prediction=details["site_prediction"],
+                      spectra=details["spectra"],
+                      multifidelity=details["multifidelity"])
     best_checkpoint = torch.load(model_path)
     model.load_state_dict(best_checkpoint["state_dict"])
     model.eval()

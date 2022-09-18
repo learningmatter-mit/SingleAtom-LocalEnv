@@ -35,6 +35,7 @@ class AverageMeter:
 
 
 class Trainer:
+
     def __init__(
         self,
         model_path,
@@ -86,6 +87,7 @@ class Trainer:
             metrics = AverageMeter()
             end = time.time()
             for i, batch in enumerate(self.train_loader):
+                self.model.zero_grad(set_to_none=True)
                 batch = batch_to(batch, device)
                 # measure data loading time
                 data_time.update(time.time() - end)
@@ -94,7 +96,6 @@ class Trainer:
                 if self.normalizer is not None:
                     target = self.normalizer.norm(target)
                 output = self.model(batch)[self.output_key]
-
                 loss = self.loss_fn(output, target).mean()
 
                 # measure accuracy and record loss
@@ -102,8 +103,7 @@ class Trainer:
                 losses.update(loss.data.cpu().item(), target.size(0))
                 metrics.update(metric.cpu().item(), target.size(0))
 
-                # compute gradient and do SGD step
-                self.optimizer.zero_grad()
+                # compute gradient and do optim step
                 loss.backward()
                 self.optimizer.step()
 
@@ -125,8 +125,7 @@ class Trainer:
                             data_time=data_time,
                             loss=losses,
                             metrics=metrics,
-                        )
-                    )
+                        ))
             train_losses.append(losses.avg)
             train_metrics.append(metrics.avg)
             val_loss, val_metric = self.validate(device=device)
@@ -227,16 +226,14 @@ class Trainer:
             batch_time.update(time.time() - end)
             end = time.time()
 
-        print(
-            "*Validatoin: \t"
-            "Time {batch_time.avg:.3f}\t"
-            "Loss {loss.avg:.4f}\t"
-            "Metric {metrics.avg:.3f}".format(
-                batch_time=batch_time,
-                loss=losses,
-                metrics=metrics,
-            )
-        )
+        print("*Validatoin: \t"
+              "Time {batch_time.avg:.3f}\t"
+              "Loss {loss.avg:.4f}\t"
+              "Metric {metrics.avg:.3f}".format(
+                  batch_time=batch_time,
+                  loss=losses,
+                  metrics=metrics,
+              ))
 
         if test:
             return test_pred, test_target, test_ids
@@ -283,16 +280,16 @@ def test(model, output_key, test_loader, metric_fn, device, normalizer=None):
         target = batch["target"]
         if normalizer is not None:
             target = normalizer.norm(target)
-
+        target = target.to('cpu')
         # Compute output
-        output = model(batch)[output_key]
+        output = model(batch, inference=True)[output_key]
 
         # measure accuracy and record loss
         metric = metric_fn(output, target).mean()
 
         metrics.update(metric.cpu().item(), target.size(0))
 
-        test_pred = output.detach().data.cpu()
+        test_pred = output.data.cpu()
         test_target = target.detach().cpu()
         if test_target.shape[0] == batch["name"].shape[0]:
             test_preds += test_pred.view(-1).tolist()
