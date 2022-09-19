@@ -273,7 +273,7 @@ def test(model, output_key, test_loader, metric_fn, device, normalizer=None):
     test_targets = []
     test_preds = []
     test_ids = []
-
+    metric_bin = []
     metrics = AverageMeter()
     for batch in test_loader:
         batch = batch_to(batch, device)
@@ -285,16 +285,16 @@ def test(model, output_key, test_loader, metric_fn, device, normalizer=None):
         output = model(batch, inference=True)[output_key]
 
         # measure accuracy and record loss
-        metric = metric_fn(output, target).mean()
+        metric = metric_fn(output, target)
 
-        metrics.update(metric.cpu().item(), target.size(0))
+        metrics.update(metric.mean().cpu().item(), target.size(0))
 
         test_pred = output.data.cpu()
         test_target = target.detach().cpu()
         if test_target.shape[0] == batch["name"].shape[0]:
             test_preds += test_pred.view(-1).tolist()
             test_targets += test_target.view(-1).tolist()
-
+            metric_bin += metric.view(-1).tolist()
         elif test_target.shape[0] == batch["nxyz"].shape[0]:
             batch_ids = []
             count = 0
@@ -310,6 +310,8 @@ def test(model, output_key, test_loader, metric_fn, device, normalizer=None):
                 batch_ids.append(change)
             test_preds += [test_pred[i].tolist() for i in batch_ids]
             test_targets += [test_target[i].tolist() for i in batch_ids]
+            metric_bin += [metric[i].tolist() for i in batch_ids]
         test_ids += batch["name"].detach().tolist()
+        # metric_bin += metric.detach().tolist()
 
-    return test_preds, test_targets, test_ids
+    return test_preds, test_targets, test_ids, metric_bin

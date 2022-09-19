@@ -286,7 +286,7 @@ def main(args):
         num_workers=args.workers,
         collate_fn=collate_dicts,
     )
-    test_targets, test_preds, test_ids = test(
+    test_targets, test_preds, test_ids, _ = test(
         model=model,
         output_key=args.target,
         test_loader=test_loader,

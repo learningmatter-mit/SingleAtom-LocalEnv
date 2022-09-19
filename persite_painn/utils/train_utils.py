@@ -2,7 +2,7 @@ import torch
 from typing import Dict, Union
 
 
-def inference(model, data, output_key, normalizer=None):
+def inference(model, data, output_key, normalizer=None, device='cpu'):
     """Inference
 
     Args:
@@ -14,6 +14,7 @@ def inference(model, data, output_key, normalizer=None):
     Returns:
             out (torch.Tensor): inference tensor
     """
+    model.to(device)
     out = model(data)[output_key].detach()
     if normalizer is None:
         return out
@@ -40,6 +41,7 @@ class Normalizer:
             self.std = torch.std(inputs)
             self.max = torch.max(inputs)
             self.min = torch.min(inputs)
+            self.sum = torch.sum(inputs)
         elif isinstance(inputs, Dict):
             self.load_state_dict(inputs)
         else:
@@ -49,15 +51,25 @@ class Normalizer:
         return (tensor - self.mean) / self.std
         # return (tensor - self.mean) / self.std
 
+    def norm_to_unity(self, tensor):
+        return tensor / self.sum
+
     def denorm(self, normed_tensor):
         return normed_tensor * self.std + self.mean
         # return normed_tensor * self.std + self.mean
 
     def state_dict(self):
-        return {"mean": self.mean, "std": self.std, "max": self.max, "min": self.min}
+        return {
+            "mean": self.mean,
+            "std": self.std,
+            "max": self.max,
+            "min": self.min,
+            "sum": self.sum
+        }
 
     def load_state_dict(self, state_dict):
         self.mean = state_dict["mean"]
         self.std = state_dict["std"]
         self.max = state_dict["max"]
         self.min = state_dict["min"]
+        self.sum = state_dict["sum"]

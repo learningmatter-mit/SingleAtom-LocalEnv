@@ -72,7 +72,7 @@ def gaussian_filter_1d(size, sigma):
 
 
 def gaussian_smoothing(signal, sigma):
-    filter_size = signal.shape[-1] - 1
+    filter_size = signal.shape[-1]
     gaussian_filter = gaussian_filter_1d(filter_size, sigma).to(signal.device)
     if signal.dim() == 1:
         signal = signal.unsqueeze(0)

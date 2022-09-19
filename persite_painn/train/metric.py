@@ -3,10 +3,10 @@ from .loss import sid_operation
 from persite_painn.utils.tools import gaussian_smoothing
 
 
-def sis_operation(pred_spectra, target_spectra, sigma=10):
+def sis_operation(pred_spectra, target_spectra, sigma=5):
 
-    filtered_target = torch.tensor(gaussian_smoothing(target_spectra, sigma))
-    filtered_pred = torch.tensor(gaussian_smoothing(pred_spectra, sigma))
+    filtered_target = gaussian_smoothing(target_spectra, sigma)
+    filtered_pred = gaussian_smoothing(pred_spectra, sigma)
     sid = sid_operation(filtered_pred, filtered_target)
     sis = 1 / (1 + sid)
 
