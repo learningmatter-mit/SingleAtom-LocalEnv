@@ -61,24 +61,25 @@ def compute_params(model):
     return params
 
 
-def gaussian_smearing(distances, offset, widths, centered=False):
+def gaussian_filter_1d(size, sigma):
+    double_pi_sqrt = (torch.pi * 2)**0.5
+    filter_range = torch.linspace(-int(size / 2), int(size / 2), size)
 
-    if not centered:
-        # Compute width of Gaussians (using an overlap of 1 STDDEV)
-        # widths = offset[1] - offset[0]
-        coeff = -0.5 / torch.pow(widths, 2)
-        diff = distances - offset
+    _filter = 1
+    _filter = _filter / (sigma * double_pi_sqrt)
+    _filter = _filter * torch.exp(-(filter_range**2) / (2 * sigma**2))
+    return _filter
 
-    else:
-        # If Gaussians are centered, use offsets to compute widths
-        coeff = -0.5 / torch.pow(offset, 2)
-        # If centered Gaussians are requested, don't substract anything
-        diff = distances
 
-    # Compute and return Gaussians
-    gauss = torch.exp(coeff * torch.pow(diff, 2))
-
-    return gauss
+def gaussian_smoothing(signal, sigma):
+    filter_size= signal.shape[-1]-1
+    gaussian_filter = gaussian_filter_1d(filter_size, sigma).to(signal.device)
+    if signal.dim() ==1:
+        signal= signal.unsqueeze(0)
+    signal = signal[:, None, :]
+    gaussian_filter = gaussian_filter[None, None, :]
+    smoothed_signal = torch.conv1d(signal, gaussian_filter, padding=filter_size // 2)
+    return smoothed_signal.squeeze()
 
 
 def get_offsets(batch, key):
@@ -100,7 +101,7 @@ def get_rij(xyz, batch, nbrs, cutoff):
     # remove nbr skin (extra distance added to cutoff
     # to catch atoms that become neighbors between nbr
     # list updates)
-    dist = (r_ij.detach() ** 2).sum(-1) ** 0.5
+    dist = (r_ij.detach()**2).sum(-1)**0.5
 
     if type(cutoff) == torch.Tensor:
         dist = dist.to(cutoff.device)

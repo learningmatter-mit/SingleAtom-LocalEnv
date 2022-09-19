@@ -20,7 +20,7 @@ from persite_painn.train import (
     mae_operation,
     mse_operation,
     sid_operation,
-    # sis_operation,
+    sis_operation,
 )
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
@@ -224,8 +224,8 @@ def main(args):
         metric_fn = stmse_operation
     elif args.metric_fn == "MAE":
         metric_fn = mae_operation
-    # elif args.metric_fn == "SIS":
-    #     metric_fn = sis_operation
+    elif args.metric_fn == "SIS":
+        metric_fn = sis_operation
     else:
         raise NameError("Only STMSE or MAE or SIS is allowed as --metric_fn")
 

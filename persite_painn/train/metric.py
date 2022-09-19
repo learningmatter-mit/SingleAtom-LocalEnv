@@ -1,18 +1,16 @@
 import torch
 from .loss import sid_operation
-from persite_painn.utils.tools import gaussian_smearing
+from persite_painn.utils.tools import gaussian_smoothing
 
 
-# def sis_operation(pred_spectra, target_spectra, torch_device: str = "cpu"):
+def sis_operation(pred_spectra, target_spectra, sigma=10):
 
-#     filtered_target = torch.tensor(gaussian_filter1d(target_spectra, 1))
-#     filtered_target = filtered_target.to(torch_device)
-#     filtered_pred = torch.tensor(gaussian_filter1d(pred_spectra, 1))
-#     filtered_pred = filtered_pred.to(torch_device)
-#     sid = sid_operation(filtered_pred, filtered_target)
-#     sis = 1 / (1 + sid)
+    filtered_target = torch.tensor(gaussian_smoothing(target_spectra, sigma))
+    filtered_pred = torch.tensor(gaussian_smoothing(pred_spectra, sigma))
+    sid = sid_operation(filtered_pred, filtered_target)
+    sis = 1 / (1 + sid)
 
-#     return sis
+    return sis
 
 
 def mae_operation(
