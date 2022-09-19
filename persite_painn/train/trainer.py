@@ -266,7 +266,12 @@ class Trainer:
         self.optimizer.load_state_dict(self.optimizer.state_dict())
 
 
-def test(model, output_key, test_loader, metric_fn, device, normalizer=None):
+def test_model(model,
+               output_key,
+               test_loader,
+               metric_fn,
+               device,
+               normalizer=None):
     """Validate the current state of the model using the validation set"""
     model.to(device)
     model.eval()

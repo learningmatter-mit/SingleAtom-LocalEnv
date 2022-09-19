@@ -14,7 +14,7 @@ from persite_painn.nn.builder import load_params, get_model
 from persite_painn.train.builder import get_scheduler, get_optimizer
 from persite_painn.utils.train_utils import Normalizer
 
-from persite_painn.train.trainer import Trainer, test
+from persite_painn.train.trainer import Trainer, test_model
 from persite_painn.train import (
     stmse_operation,
     mae_operation,
@@ -286,7 +286,7 @@ def main(args):
         num_workers=args.workers,
         collate_fn=collate_dicts,
     )
-    test_targets, test_preds, test_ids, _ = test(
+    test_targets, test_preds, test_ids, _ = test_model(
         model=model,
         output_key=args.target,
         test_loader=test_loader,
