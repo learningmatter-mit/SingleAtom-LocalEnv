@@ -308,5 +308,6 @@ dependencies:
     - svgwrite==1.4.2
     - terminado==0.15.0
     - tinycss2==1.1.1
+    - torch-scatter==2.0.9
     - webencodings==0.5.1
     - widgetsnbextension==3.6.0

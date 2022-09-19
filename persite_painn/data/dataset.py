@@ -1,15 +1,15 @@
 import torch
-import os
+
+import numbers
 import numpy as np
 import copy
-import nff.utils.constants as const
 from copy import deepcopy
 from sklearn.utils import shuffle as skshuffle
+
 from ase import Atoms
 from ase.neighborlist import neighbor_list
 from torch.utils.data import Dataset as TorchDataset
-from tqdm import tqdm
-import random
+
 from nff.data.parallel import (
     featurize_parallel,
     NUM_PROCS,
@@ -29,11 +29,9 @@ from nff.data.graphs import (
     add_ji_kj,
     make_dset_directed,
 )
-from nff.data.dataset import to_tensor, split_train_test
-from pymatgen.io.ase import AseAtomsAdaptor as AA
 
 
-class PerSiteDataset(TorchDataset):
+class Dataset(TorchDataset):
     """Dataset to deal with NFF calculations.
 
     Attributes:
@@ -54,15 +52,9 @@ class PerSiteDataset(TorchDataset):
                 props = {
                     'nxyz': [np.array([[1, 0, 0, 0], [1, 1.1, 0, 0]]),
                              np.array([[1, 3, 0, 0], [1, 1.1, 5, 0]])],
-                    'energy_0': [1, 1.2],
-                    'energy_0_grad': [np.array([[0, 0, 0], [0.1, 0.2, 0.3]]),
-                                      np.array([[0, 0, 0], [0.1, 0.2, 0.3]])],
-                    'energy_1': [1.5, 1.5],
-                    'energy_1_grad': [np.array([[0, 0, 1], [0.1, 0.5, 0.8]]),
-                                      np.array([[0, 0, 1], [0.1, 0.5, 0.8]])],
-                    'dipole_2': [3, None]
                     'lattaice': [[np.array([1,0,0])],[np.array([0,1,0])],[np.array([0,0,1])]]
                     'site_prop': [[]]
+                    'target': [[]]
                 }
 
             Periodic boundary conditions must be specified through the 'offset' key in
@@ -79,11 +71,7 @@ class PerSiteDataset(TorchDataset):
 
     def __init__(
         self,
-        samples,
-        prop_to_predict,
-        dataset_cache,
-        cutoff=5.0,
-        units="kcal/mol",
+        props,
         check_props=True,
         do_copy=True,
     ):
@@ -102,41 +90,13 @@ class PerSiteDataset(TorchDataset):
         #         self.props = self._check_dictionary(props)
         # else:
         #     self.props = props
-
-        self.units = units
-        self.to_units("kcal/mol")
-        self.prop_to_predict = prop_to_predict
-
-        if os.path.exists(dataset_cache):
-            print("Cached dataset exists...")
-        else:
-            print("Creating and caching dataset...")
-            random.seed(1234)
-            random.shuffle(samples)
-
-            props = {}
-            name_list = []
-            nxyz_list = []
-            lattice_list = []
-            site_prop_list = []
-            for idx in tqdm(range(len(samples)), position=0, leave=True):
-                id_, nxyz, lattice, site_prop = self.compute_prop(*samples[idx])
-                name_list.append(id_)
-                nxyz_list.append(nxyz)
-                lattice_list.append(lattice)
-                site_prop_list.append(site_prop)
-
-            props["nxyz"] = nxyz_list
-            props["lattice"] = lattice_list
-            props["site_prop"] = site_prop_list
-            props["name"] = name_list
-            self.props = self._check_dictionary(props)
-
-            self.generate_neighbor_list(cutoff=cutoff, undirected=False)
-
-            print("Done creating dataset, caching...")
-            self.save(dataset_cache)
-            print("Done caching dataset")
+        if props is not None and check_props:
+            if do_copy:
+                self.props = self._check_dictionary(deepcopy(props))
+            else:
+                self.props = self._check_dictionary(props)
+        elif props is None:
+            self.props = props
 
     def __len__(self):
         """Summary
@@ -234,16 +194,6 @@ class PerSiteDataset(TorchDataset):
 
         return props
 
-    def compute_prop(self, id_, crystal):
-        target = crystal.site_properties[self.prop_to_predict]
-        structure = AA.get_atoms(crystal)
-        n = np.asarray(structure.numbers).reshape(-1, 1)
-        xyz = np.asarray(structure.positions)
-        nxyz = np.concatenate((n, xyz), axis=1)
-        lattice = structure.cell[:]
-
-        return id_, nxyz, lattice, target
-
     def generate_neighbor_list(
         self, cutoff, undirected=True, key="nbr_list", offset_key="offsets"
     ):
@@ -273,11 +223,6 @@ class PerSiteDataset(TorchDataset):
             return self.props[key], self.props[offset_key]
 
         return self.props[key]
-
-    # def make_nbr_to_mol(self):
-    #     nbr_to_mol = []
-    #     for nbrs in self.props['nbr_list']:
-    #         nbrs_to_mol.append(torch.zeros(len(nbrs)))
 
     def make_all_directed(self):
         make_dset_directed(self)
@@ -355,37 +300,7 @@ class PerSiteDataset(TorchDataset):
         Returns:
             TYPE: Description
         """
-        return PerSiteDataset(self.props, self.units)
-
-    def to_units(self, target_unit):
-        """Converts the dataset to the desired unit. Modifies the dictionary
-        of properties in place.
-
-        Args:
-            target_unit (str): unit to use as final one
-
-        Returns:
-            TYPE: Description
-
-        Raises:
-            NotImplementedError: Description
-        """
-
-        if target_unit not in ["kcal/mol", "atomic"]:
-            raise NotImplementedError(
-                "unit conversion for {} not implemented".format(target_unit)
-            )
-
-        if target_unit == "kcal/mol" and self.units == "atomic":
-            self.props = const.convert_units(self.props, const.AU_TO_KCAL)
-
-        elif target_unit == "atomic" and self.units == "kcal/mol":
-            self.props = const.convert_units(self.props, const.KCAL_TO_AU)
-        else:
-            return
-
-        self.units = target_unit
-        return
+        return Dataset(self.props, self.units)
 
     def change_idx(self, idx):
         """
@@ -629,7 +544,7 @@ class PerSiteDataset(TorchDataset):
         self._check_dictionary(deepcopy(self.props))
 
     @classmethod
-    def from_file(cls, path):
+    def load(cls, path):
         """Summary
 
         Args:
@@ -648,20 +563,101 @@ class PerSiteDataset(TorchDataset):
             raise TypeError("{} is not an instance from {}".format(path, type(cls)))
 
 
-def split_train_validation_test(
-    dataset, val_size=0.2, test_size=0.2, seed=None, **kwargs
-):
-    """Summary
-    Args:
-        dataset (TYPE): Description
-        val_size (float, optional): Description
-        test_size (float, optional): Description
-    Returns:
-        TYPE: Description
+def convert_nan(x):
     """
-    train, test = split_train_test(dataset, test_size=test_size, seed=seed, **kwargs)
-    train, validation = split_train_test(
-        train, test_size=val_size / (1 - test_size), seed=seed, **kwargs
-    )
+    If a list has any elements that contain nan, convert its contents
+    to the right form so that it can eventually be converted to a tensor.
+    Args:
+        x (list): any list with floats, ints, or Tensors.
+    Returns:
+        new_x (list): updated version of `x`
+    """
 
-    return train, validation, test
+    new_x = []
+    # whether any of the contents have nan
+    has_nan = any([np.isnan(y).any() for y in x])
+    for y in x:
+
+        if has_nan:
+            # if one is nan then they will have to become float tensors
+            if type(y) in [int, float]:
+                new_x.append(torch.Tensor([y]))
+            elif isinstance(y, torch.Tensor):
+                new_x.append(y.float())
+            elif isinstance(y, list):
+                new_x.append(torch.Tensor(y))
+            else:
+                msg = (
+                    "Don't know how to convert sub-components of type "
+                    f"{type(x)} when components might contain nan"
+                )
+                raise Exception(msg)
+        else:
+            # otherwise they can be kept as is
+            new_x.append(y)
+
+    return new_x
+
+
+def to_tensor(x, stack=False):
+    """
+    Converts input `x` to torch.Tensor.
+    Args:
+        x (list of lists): input to be converted. Can be: number, string, list, array, tensor
+        stack (bool): if True, concatenates torch.Tensors in the batching dimension
+    Returns:
+        torch.Tensor or list, depending on the type of x
+    Raises:
+        TypeError: Description
+    """
+
+    # a single number should be a list
+    if isinstance(x, numbers.Number):
+        return torch.Tensor([x])
+
+    if isinstance(x, str):
+        return [x]
+
+    if isinstance(x, torch.Tensor):
+        return x
+
+    if type(x) is list and type(x[0]) != str:
+        if not isinstance(x[0], torch.sparse.FloatTensor):
+            x = convert_nan(x)
+
+    # all objects in x are tensors
+    if isinstance(x, list) and all([isinstance(y, torch.Tensor) for y in x]):
+
+        # list of tensors with zero or one effective dimension
+        # flatten the tensor
+
+        if all([len(y.shape) < 1 for y in x]):
+            return torch.cat([y.view(-1) for y in x], dim=0)
+
+        elif stack:
+            return torch.cat(x, dim=0)
+
+        # list of multidimensional tensors
+        else:
+            return x
+
+    # some objects are not tensors
+    elif isinstance(x, list):
+
+        # list of strings
+        if all([isinstance(y, str) for y in x]):
+            return x
+
+        # list of ints
+        if all([isinstance(y, int) for y in x]):
+            return torch.LongTensor(x)
+
+        # list of floats
+        if all([isinstance(y, numbers.Number) for y in x]):
+            return torch.Tensor(x)
+
+        # list of arrays or other formats
+        if any([isinstance(y, (list, np.ndarray)) for y in x]):
+            return [torch.Tensor(y) for y in x]
+
+    raise TypeError("Data type not understood")

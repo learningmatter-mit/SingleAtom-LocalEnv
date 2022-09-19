@@ -5,13 +5,12 @@ def sid_operation(
     model_spectra: torch.Tensor,
     target_spectra: torch.Tensor,
     eps: float = 1e-7,
-    torch_device: str = "cpu",
 ) -> torch.Tensor:
     # normalize the model spectra before comparison
     nan_mask = torch.isnan(target_spectra) + torch.isnan(model_spectra)
-    nan_mask = nan_mask.to(device=torch_device)
-    zero_sub = torch.zeros_like(target_spectra, device=torch_device)
-    one_sub = torch.ones_like(model_spectra, device=torch_device)
+    nan_mask = nan_mask.to(target_spectra.device)
+    zero_sub = torch.zeros_like(target_spectra, device=target_spectra.device)
+    one_sub = torch.ones_like(model_spectra, device=target_spectra.device)
 
     sum_model_spectra = torch.sum(
         torch.where(nan_mask, zero_sub, model_spectra), dim=1, keepdim=True
@@ -36,13 +35,12 @@ def stmse_operation(
     model_spectra: torch.Tensor,
     target_spectra: torch.Tensor,
     eps: float = 1e-7,
-    torch_device: str = "cpu",
 ) -> torch.Tensor:
     # normalize the model spectra before comparison
     nan_mask = torch.isnan(target_spectra) + torch.isnan(model_spectra)
-    nan_mask = nan_mask.to(device=torch_device)
-    zero_sub = torch.zeros_like(target_spectra, device=torch_device)
-    one_sub = torch.ones_like(model_spectra, device=torch_device)
+    nan_mask = nan_mask.to(target_spectra.device)
+    zero_sub = torch.zeros_like(target_spectra, device=target_spectra.device)
+    one_sub = torch.ones_like(model_spectra, device=target_spectra.device)
 
     sum_model_spectra = torch.sum(
         torch.where(nan_mask, zero_sub, model_spectra), dim=1, keepdim=True
@@ -60,9 +58,9 @@ def stmse_operation(
 def mse_operation(
     prediction: torch.Tensor,
     target: torch.Tensor,
-    torch_device: str = "cpu",
 ) -> torch.Tensor:
     flattened_pred = prediction.view(1, -1)
     flattened_targ = target.view(1, -1)
+    assert flattened_pred.shape[0] == flattened_targ.shape[0]
     loss = torch.mean((flattened_pred - flattened_targ) ** 2, dim=1)
     return loss
