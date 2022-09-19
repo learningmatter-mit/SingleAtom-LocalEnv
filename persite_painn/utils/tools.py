@@ -72,13 +72,15 @@ def gaussian_filter_1d(size, sigma):
 
 
 def gaussian_smoothing(signal, sigma):
-    filter_size= signal.shape[-1]-1
+    filter_size = signal.shape[-1] - 1
     gaussian_filter = gaussian_filter_1d(filter_size, sigma).to(signal.device)
-    if signal.dim() ==1:
-        signal= signal.unsqueeze(0)
+    if signal.dim() == 1:
+        signal = signal.unsqueeze(0)
     signal = signal[:, None, :]
     gaussian_filter = gaussian_filter[None, None, :]
-    smoothed_signal = torch.conv1d(signal, gaussian_filter, padding=filter_size // 2)
+    smoothed_signal = torch.conv1d(signal,
+                                   gaussian_filter,
+                                   padding=filter_size // 2)
     return smoothed_signal.squeeze()
 
 
