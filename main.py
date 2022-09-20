@@ -220,6 +220,27 @@ def main(args):
         num_workers=args.workers,
         collate_fn=collate_dicts,
     )
+    test_loader = DataLoader(
+        test_set,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        collate_fn=collate_dicts,
+    )
+    # Save ids
+    train_ids = []
+    for item in train_set:
+        train_ids.append(item["name"].item())
+    val_ids = []
+    for item in val_set:
+        val_ids.append(item["name"].item())
+    test_ids = []
+    for item in test_set:
+        test_ids.append(item["name"].item())
+
+    pkl.dump(train_ids, open(f"{args.savedir}/train_ids.pkl", "wb"))
+    pkl.dump(val_ids, open(f"{args.savedir}/val_ids.pkl", "wb"))
+    pkl.dump(test_ids, open(f"{args.savedir}/test_ids.pkl", "wb"))
+
     early_stop = [args.early_stop_val, args.early_stop_train]
 
     # set Trainer
@@ -252,13 +273,7 @@ def main(args):
     best_checkpoint = torch.load(f"{args.savedir}/best_model.pth.tar")
     model.load_state_dict(best_checkpoint["state_dict"])
 
-    test_loader = DataLoader(
-        test_set,
-        batch_size=args.batch_size,
-        num_workers=args.workers,
-        collate_fn=collate_dicts,
-    )
-    test_targets, test_preds, test_ids, _ = test_model(
+    test_targets, test_preds, _, _ = test_model(
         model=model,
         output_key=modelparams["output_keys"][0],
         test_loader=test_loader,
@@ -267,19 +282,9 @@ def main(args):
         normalizer=normalizer,
     )
 
-    # Save Results
+    # Save Test Results
     pkl.dump(test_preds, open(f"{args.savedir}/test_preds.pkl", "wb"))
     pkl.dump(test_targets, open(f"{args.savedir}/test_targs.pkl", "wb"))
-    pkl.dump(test_ids, open(f"{args.savedir}/test_ids.pkl", "wb"))
-
-    train_ids = []
-    for item in train_set:
-        train_ids.append(item["name"].item())
-    val_ids = []
-    for item in val_set:
-        val_ids.append(item["name"].item())
-    pkl.dump(train_ids, open(f"{args.savedir}/train_ids.pkl", "wb"))
-    pkl.dump(val_ids, open(f"{args.savedir}/val_ids.pkl", "wb"))
 
 
 if __name__ == "__main__":
