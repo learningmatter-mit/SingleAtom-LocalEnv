@@ -9,7 +9,7 @@ EPS = 1e-8
 
 
 def norm(vec):
-    result = ((vec**2 + EPS).sum(-1))**0.5
+    result = ((vec**2 + EPS).sum(-1)) ** 0.5
     return result
 
 
@@ -29,7 +29,6 @@ def to_module(activation):
 
 
 class nn_exp(nn.Module):
-
     def __init__(self):
         super(nn_exp, self).__init__()
 
@@ -38,7 +37,6 @@ class nn_exp(nn.Module):
 
 
 class InvariantDense(nn.Module):
-
     def __init__(self, dim, dropout, activation="swish"):
         super().__init__()
         self.layers = nn.Sequential(
@@ -49,10 +47,9 @@ class InvariantDense(nn.Module):
                 dropout_rate=dropout,
                 activation=to_module(activation),
             ),
-            Dense(in_features=dim,
-                  out_features=3 * dim,
-                  bias=True,
-                  dropout_rate=dropout),
+            Dense(
+                in_features=dim, out_features=3 * dim, bias=True, dropout_rate=dropout
+            ),
         )
 
     def forward(self, s_j):
@@ -61,13 +58,10 @@ class InvariantDense(nn.Module):
 
 
 class DistanceEmbed(nn.Module):
-
     def __init__(self, n_rbf, cutoff, feat_dim, learnable_k, dropout):
 
         super().__init__()
-        rbf = PainnRadialBasis(n_rbf=n_rbf,
-                               cutoff=cutoff,
-                               learnable_k=learnable_k)
+        rbf = PainnRadialBasis(n_rbf=n_rbf, cutoff=cutoff, learnable_k=learnable_k)
 
         dense = Dense(
             in_features=n_rbf,
@@ -87,14 +81,12 @@ class DistanceEmbed(nn.Module):
 
 
 class InvariantMessage(nn.Module):
-
-    def __init__(self, feat_dim, activation, n_rbf, cutoff, learnable_k,
-                 dropout):
+    def __init__(self, feat_dim, activation, n_rbf, cutoff, learnable_k, dropout):
         super().__init__()
 
-        self.inv_dense = InvariantDense(dim=feat_dim,
-                                        activation=activation,
-                                        dropout=dropout)
+        self.inv_dense = InvariantDense(
+            dim=feat_dim, activation=activation, dropout=dropout
+        )
         self.dist_embed = DistanceEmbed(
             n_rbf=n_rbf,
             cutoff=cutoff,
@@ -119,7 +111,6 @@ class InvariantMessage(nn.Module):
 
 
 class MessageBase(nn.Module):
-
     def forward(self, s_j, v_j, r_ij, nbrs):
 
         dist, unit = preprocess_r(r_ij)
@@ -136,23 +127,21 @@ class MessageBase(nn.Module):
         # add results from neighbors of each node
 
         graph_size = s_j.shape[0]
-        delta_v_i = scatter_add(src=delta_v_ij,
-                                index=nbrs[:, 0],
-                                dim=0,
-                                dim_size=graph_size)
+        delta_v_i = scatter_add(
+            src=delta_v_ij, index=nbrs[:, 0], dim=0, dim_size=graph_size
+        )
 
-        delta_s_i = scatter_add(src=delta_s_ij,
-                                index=nbrs[:, 0],
-                                dim=0,
-                                dim_size=graph_size)
+        delta_s_i = scatter_add(
+            src=delta_s_ij, index=nbrs[:, 0], dim=0, dim_size=graph_size
+        )
 
         return delta_s_i, delta_v_i
 
 
 class MessageBlock(MessageBase):
-
-    def __init__(self, feat_dim, activation, n_rbf, cutoff, learnable_k,
-                 dropout, **kwargs):
+    def __init__(
+        self, feat_dim, activation, n_rbf, cutoff, learnable_k, dropout, **kwargs
+    ):
         super().__init__()
         self.inv_message = InvariantMessage(
             feat_dim=feat_dim,
@@ -179,29 +168,22 @@ class MessageBlock(MessageBase):
         # add results from neighbors of each node
 
         graph_size = s_j.shape[0]
-        delta_v_i = scatter_add(src=delta_v_ij,
-                                index=nbrs[:, 0],
-                                dim=0,
-                                dim_size=graph_size)
+        delta_v_i = scatter_add(
+            src=delta_v_ij, index=nbrs[:, 0], dim=0, dim_size=graph_size
+        )
 
-        delta_s_i = scatter_add(src=delta_s_ij,
-                                index=nbrs[:, 0],
-                                dim=0,
-                                dim_size=graph_size)
+        delta_s_i = scatter_add(
+            src=delta_s_ij, index=nbrs[:, 0], dim=0, dim_size=graph_size
+        )
 
         return delta_s_i, delta_v_i
 
 
 class UpdateBlock(nn.Module):
-
     def __init__(self, feat_dim, activation, dropout):
         super().__init__()
-        self.u_mat = Dense(in_features=feat_dim,
-                           out_features=feat_dim,
-                           bias=False)
-        self.v_mat = Dense(in_features=feat_dim,
-                           out_features=feat_dim,
-                           bias=False)
+        self.u_mat = Dense(in_features=feat_dim, out_features=feat_dim, bias=False)
+        self.v_mat = Dense(in_features=feat_dim, out_features=feat_dim, bias=False)
         self.s_dense = nn.Sequential(
             Dense(
                 in_features=2 * feat_dim,
@@ -257,7 +239,6 @@ class UpdateBlock(nn.Module):
 
 
 class EmbeddingBlock(nn.Module):
-
     def __init__(self, feat_dim):
 
         super().__init__()
@@ -306,7 +287,6 @@ class ScaleShift(nn.Module):
 
 
 class ReadoutBlock(nn.Module):
-
     def __init__(
         self,
         feat_dim,
@@ -320,24 +300,27 @@ class ReadoutBlock(nn.Module):
     ):
         super().__init__()
 
-        self.readoutdict = nn.ModuleDict({
-            key: nn.Sequential(
-                Dense(
-                    in_features=feat_dim,
-                    out_features=output_atom_fea,
-                    bias=True,
-                    dropout_rate=dropout,
-                    activation=to_module(activation),
-                ),
-                Dense(
-                    in_features=output_atom_fea,
-                    out_features=output_atom_fea,
-                    bias=True,
-                    dropout_rate=dropout,
-                    activation=to_module(activation),
-                ),
-            ) for key in output_keys
-        })
+        self.readoutdict = nn.ModuleDict(
+            {
+                key: nn.Sequential(
+                    Dense(
+                        in_features=feat_dim,
+                        out_features=output_atom_fea,
+                        bias=True,
+                        dropout_rate=dropout,
+                        activation=to_module(activation),
+                    ),
+                    Dense(
+                        in_features=output_atom_fea,
+                        out_features=output_atom_fea,
+                        bias=True,
+                        dropout_rate=dropout,
+                        activation=to_module(activation),
+                    ),
+                )
+                for key in output_keys
+            }
+        )
         self.scale = scale
         if self.scale:
             self.scale_shift = ScaleShift(means=means, stddevs=stddevs)
@@ -359,15 +342,16 @@ class ReadoutBlock(nn.Module):
 
 
 class FullyConnected(nn.Module):
-
-    def __init__(self,
-                 output_atom_fea_dim,
-                 h_fea_len,
-                 n_h,
-                 activation,
-                 n_outputs,
-                 dropout,
-                 force_positive=False):
+    def __init__(
+        self,
+        output_atom_fea_dim,
+        h_fea_len,
+        n_h,
+        activation,
+        n_outputs,
+        dropout,
+        force_positive=False,
+    ):
         super().__init__()
         self.conv_to_fc = Dense(
             in_features=output_atom_fea_dim,
@@ -376,15 +360,18 @@ class FullyConnected(nn.Module):
             dropout_rate=dropout,
             activation=to_module(activation),
         )
-        self.fcs = nn.ModuleList([
-            Dense(
-                in_features=h_fea_len,
-                out_features=h_fea_len,
-                bias=True,
-                dropout_rate=dropout,
-                activation=to_module(activation),
-            ) for _ in range(n_h - 1)
-        ])
+        self.fcs = nn.ModuleList(
+            [
+                Dense(
+                    in_features=h_fea_len,
+                    out_features=h_fea_len,
+                    bias=True,
+                    dropout_rate=dropout,
+                    activation=to_module(activation),
+                )
+                for _ in range(n_h - 1)
+            ]
+        )
         self.force_positive = force_positive
 
         if self.force_positive:
@@ -406,13 +393,14 @@ class FullyConnected(nn.Module):
 
 
 class SumPool(nn.Module):
-
     def __init__(self):
         super().__init__()
 
     def pooling(self, batch, atomwise_output, out_keys=None, mean=False):
 
         N = batch["num_atoms"].detach().cpu().tolist()
+        if isinstance(N, int):
+            N = [N]
         results = {}
         if out_keys is None:
             out_keys = list(atomwise_output.keys())
@@ -421,8 +409,11 @@ class SumPool(nn.Module):
             if key not in out_keys:
                 continue
 
-            mol_idx = (torch.arange(len(N)).repeat_interleave(
-                torch.LongTensor(N)).to(val.device))
+            mol_idx = (
+                torch.arange(len(N))
+                .repeat_interleave(torch.LongTensor(N))
+                .to(val.device)
+            )
             dim_size = mol_idx.max() + 1
 
             if val.reshape(-1).shape[0] == mol_idx.shape[0]:
@@ -433,14 +424,16 @@ class SumPool(nn.Module):
                 use_val = val
 
             else:
-                raise Exception(("Don't know how to handle val shape "
-                                 "{} for key {}".format(val.shape, key)))
+                raise Exception(
+                    (
+                        "Don't know how to handle val shape "
+                        "{} for key {}".format(val.shape, key)
+                    )
+                )
 
-            pooled_result = scatter(use_val,
-                                    mol_idx.reshape(-1, 1),
-                                    dim=0,
-                                    dim_size=dim_size,
-                                    reduce="sum")
+            pooled_result = scatter(
+                use_val, mol_idx.reshape(-1, 1), dim=0, dim_size=dim_size, reduce="sum"
+            )
             if mean:
                 pooled_result = pooled_result / torch.Tensor(N).to(val.device)
 
@@ -455,58 +448,3 @@ class SumPool(nn.Module):
             out_keys=out_keys,
         )
         return results
-
-
-def sum_pooling(batch, atomwise_output, out_keys=None, mean=False):
-
-    N = batch["num_atoms"].detach().cpu().tolist()
-    results = {}
-    if out_keys is None:
-        out_keys = list(atomwise_output.keys())
-
-    for key, val in atomwise_output.items():
-        if key not in out_keys:
-            continue
-
-        mol_idx = (torch.arange(len(N)).repeat_interleave(
-            torch.LongTensor(N)).to(val.device))
-        dim_size = mol_idx.max() + 1
-
-        if val.reshape(-1).shape[0] == mol_idx.shape[0]:
-            use_val = val.reshape(-1)
-
-        # summed atom features
-        elif val.shape[0] == mol_idx.shape[0]:
-            use_val = val
-
-        else:
-            raise Exception(("Don't know how to handle val shape "
-                             "{} for key {}".format(val.shape, key)))
-        pooled_result = global_sum_pool(use_val,
-                                        mol_idx.reshape(-1, 1),
-                                        size=dim_size)
-        if mean:
-            pooled_result = pooled_result / torch.Tensor(N).to(val.device)
-
-        results[key] = pooled_result
-
-    return results
-
-
-def global_sum_pool(x, indices, size=None):
-    """
-    Globally pool node embeddings into graph embeddings, via elementwise mean.
-    Pooling function takes in node embedding [num_nodes x emb_dim] and
-    batch (indices) and outputs graph embedding [num_graphs x emb_dim].
-
-    Args:
-        x (torch.tensor): Input node embeddings
-        indices (torch.tensor): Batch tensor that indicates which node
-        belongs to which graph
-        size (optional): Total number of graphs. Can be auto-inferred.
-
-    Returns: Pooled graph embeddings
-
-    """
-    size = indices.max().item() + 1 if size is None else size
-    return scatter(x, indices, dim=0, dim_size=size, reduce="sum")
