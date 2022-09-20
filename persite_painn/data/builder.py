@@ -35,10 +35,12 @@ def build_dataset(
 def compute_prop(id_, crystal, target_val, prop_to_predict, site_prediction):
     if site_prediction:
         target = crystal.site_properties[prop_to_predict]
+        if len(target) == 1:
+            target = np.array(target).reshape(-1, 1)
         site_prop = None
     else:
         site_prop = crystal.site_properties["site_prop"]
-        target = target_val
+        target = np.array([target_val]).reshape(-1, 1)
     structure = AA.get_atoms(crystal)
     n = np.asarray(structure.numbers).reshape(-1, 1)
     xyz = np.asarray(structure.positions)

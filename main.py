@@ -16,11 +16,11 @@ from persite_painn.utils.train_utils import Normalizer
 
 from persite_painn.train.trainer import Trainer, test_model
 from persite_painn.train import (
-    stmse_operation,
-    mae_operation,
-    mse_operation,
-    sid_operation,
-    sis_operation,
+    stmse_loss,
+    mae_loss,
+    mse_loss,
+    sid_loss,
+    sis_loss,
 )
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
@@ -214,18 +214,18 @@ def main(args):
 
     # Set loss function
     if args.loss_fn == "SID":
-        loss_fn = sid_operation
+        loss_fn = sid_loss
     elif args.loss_fn == "MSE":
-        loss_fn = mse_operation
+        loss_fn = mse_loss
     else:
         raise NameError("Only SID or MSE is allowed as --loss_fn")
     # Set metric function
     if args.metric_fn == "STMSE":
-        metric_fn = stmse_operation
+        metric_fn = stmse_loss
     elif args.metric_fn == "MAE":
-        metric_fn = mae_operation
+        metric_fn = mae_loss
     elif args.metric_fn == "SIS":
-        metric_fn = sis_operation
+        metric_fn = sis_loss
     else:
         raise NameError("Only STMSE or MAE or SIS is allowed as --metric_fn")
 

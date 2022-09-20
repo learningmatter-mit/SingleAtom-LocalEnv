@@ -20,13 +20,25 @@ def sid_operation(
     model_spectra = torch.where(nan_mask, one_sub, model_spectra) + eps
     target_spectra = torch.where(nan_mask, one_sub, target_spectra) + eps
 
-    loss = torch.sum(
+    sid = torch.sum(
         torch.mul(torch.log(torch.div(model_spectra, target_spectra)), model_spectra)
         + torch.mul(
             torch.log(torch.div(target_spectra, model_spectra)), target_spectra
         ),
         dim=1,
         keepdim=True,
+    )
+
+    return sid
+
+
+def sid_loss(
+    model_spectra: torch.Tensor,
+    target_spectra: torch.Tensor,
+):
+
+    loss = torch.mean(
+        sid_operation(model_spectra=model_spectra, target_spectra=target_spectra)
     )
     return loss
 
@@ -49,18 +61,33 @@ def stmse_operation(
     target_spectra = torch.where(nan_mask, one_sub, target_spectra) + eps
     model_spectra = torch.where(nan_mask, one_sub, model_spectra) + eps
 
-    loss = torch.mean(
-        torch.div((model_spectra - target_spectra) ** 2, target_spectra), dim=1
+    stmse = torch.mean(
+        torch.div((model_spectra - target_spectra) ** 2, target_spectra),
+        dim=1,
+        keepdim=True,
     )
+
+    return stmse
+
+
+def stmse_loss(
+    model_spectra: torch.Tensor,
+    target_spectra: torch.Tensor,
+):
+    loss = torch.mean(
+        stmse_operation(model_spectra=model_spectra, target_spectra=target_spectra)
+    )
+
     return loss
 
 
-def mse_operation(
+def mse_loss(
     prediction: torch.Tensor,
     target: torch.Tensor,
 ) -> torch.Tensor:
     flattened_pred = prediction.view(1, -1)
     flattened_targ = target.view(1, -1)
     assert flattened_pred.shape[0] == flattened_targ.shape[0]
-    loss = torch.mean((flattened_pred - flattened_targ) ** 2, dim=1)
+    loss = torch.mean((flattened_pred - flattened_targ) ** 2)
+
     return loss

@@ -2,7 +2,7 @@ import torch
 from typing import Dict, Union
 
 
-def inference(model, data, output_key, normalizer=None, device='cpu'):
+def inference(model, data, output_key, normalizer=None, device="cpu"):
     """Inference
 
     Args:
@@ -42,8 +42,10 @@ class Normalizer:
             self.max = torch.max(inputs)
             self.min = torch.min(inputs)
             self.sum = torch.sum(inputs)
+
         elif isinstance(inputs, Dict):
             self.load_state_dict(inputs)
+
         else:
             TypeError
 
@@ -64,7 +66,7 @@ class Normalizer:
             "std": self.std,
             "max": self.max,
             "min": self.min,
-            "sum": self.sum
+            "sum": self.sum,
         }
 
     def load_state_dict(self, state_dict):

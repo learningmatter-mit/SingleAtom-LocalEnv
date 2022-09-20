@@ -13,7 +13,14 @@ def sis_operation(pred_spectra, target_spectra, sigma=5):
     return sis
 
 
-def mae_operation(
+def sis_loss(pred_spectra, target_spectra):
+    loss = torch.mean(
+        sis_operation(model_spectra=pred_spectra, target_spectra=target_spectra)
+    )
+    return loss
+
+
+def mae_loss(
     prediction,
     target,
 ):
@@ -28,5 +35,6 @@ def mae_operation(
     """
     flattened_pred = prediction.view(1, -1)
     flattened_targ = target.view(1, -1)
+    assert flattened_pred.shape[0] == flattened_targ.shape[0]
 
-    return torch.mean(torch.abs(flattened_pred - flattened_targ), dim=1)
+    return torch.mean(torch.abs(flattened_pred - flattened_targ))

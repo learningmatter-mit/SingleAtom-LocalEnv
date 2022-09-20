@@ -1,7 +1,7 @@
 import shutil
 import sys
 import time
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 import torch
@@ -35,7 +35,6 @@ class AverageMeter:
 
 
 class Trainer:
-
     def __init__(
         self,
         model_path,
@@ -96,10 +95,10 @@ class Trainer:
                 if self.normalizer is not None:
                     target = self.normalizer.norm(target)
                 output = self.model(batch)[self.output_key]
-                loss = self.loss_fn(output, target).mean()
+                loss = self.loss_fn(output, target)
 
                 # measure accuracy and record loss
-                metric = self.metric_fn(output, target).mean()
+                metric = self.metric_fn(output, target)
                 losses.update(loss.data.cpu().item(), target.size(0))
                 metrics.update(metric.cpu().item(), target.size(0))
 
@@ -125,7 +124,8 @@ class Trainer:
                             data_time=data_time,
                             loss=losses,
                             metrics=metrics,
-                        ))
+                        )
+                    )
             train_losses.append(losses.avg)
             train_metrics.append(metrics.avg)
             val_loss, val_metric = self.validate(device=device)
@@ -209,9 +209,9 @@ class Trainer:
             # Compute output
             output = self.model(val_batch)[self.output_key]
 
-            loss = self.loss_fn(output, target).mean()
+            loss = self.loss_fn(output, target)
             # measure accuracy and record loss
-            metric = self.metric_fn(output, target).mean()
+            metric = self.metric_fn(output, target)
             losses.update(loss.data.cpu().item(), target.size(0))
             metrics.update(metric.cpu().item(), target.size(0))
 
@@ -226,14 +226,16 @@ class Trainer:
             batch_time.update(time.time() - end)
             end = time.time()
 
-        print("*Validatoin: \t"
-              "Time {batch_time.avg:.3f}\t"
-              "Loss {loss.avg:.4f}\t"
-              "Metric {metrics.avg:.3f}".format(
-                  batch_time=batch_time,
-                  loss=losses,
-                  metrics=metrics,
-              ))
+        print(
+            "*Validatoin: \t"
+            "Time {batch_time.avg:.3f}\t"
+            "Loss {loss.avg:.4f}\t"
+            "Metric {metrics.avg:.3f}".format(
+                batch_time=batch_time,
+                loss=losses,
+                metrics=metrics,
+            )
+        )
 
         if test:
             return test_pred, test_target, test_ids
@@ -266,40 +268,49 @@ class Trainer:
         self.optimizer.load_state_dict(self.optimizer.state_dict())
 
 
-def test_model(model,
-               output_key,
-               test_loader,
-               metric_fn,
-               device,
-               normalizer=None):
-    """Validate the current state of the model using the validation set"""
+def test_model(model, output_key, test_loader, metric_fn, device, normalizer=None):
+    """
+    test the model performances
+    Args:
+        model: Model,
+        output_key: str,
+        test_loader: DataLoader,
+        metric_fn: metric function,
+        device: "cpu" or "cuda",
+    Return:
+        Lists of prediction, targets, ids, and metric
+    """
     model.to(device)
     model.eval()
     test_targets = []
     test_preds = []
     test_ids = []
-    metric_bin = []
+
     metrics = AverageMeter()
     for batch in test_loader:
         batch = batch_to(batch, device)
         target = batch["target"]
         if normalizer is not None:
             target = normalizer.norm(target)
-        target = target.to('cpu')
+        target = target.to("cpu")
         # Compute output
         output = model(batch, inference=True)[output_key]
 
         # measure accuracy and record loss
         metric = metric_fn(output, target)
 
-        metrics.update(metric.mean().cpu().item(), target.size(0))
+        metrics.update(metric.cpu().item(), target.size(0))
 
         test_pred = output.data.cpu()
         test_target = target.detach().cpu()
         if test_target.shape[0] == batch["name"].shape[0]:
-            test_preds += test_pred.view(-1).tolist()
-            test_targets += test_target.view(-1).tolist()
-            metric_bin += metric.view(-1).tolist()
+            if normalizer is not None:
+                test_preds += normalizer.denorm(test_pred.view(-1)).tolist()
+                test_targets += normalizer.denorm(test_target.view(-1)).tolist()
+            else:
+                test_preds += test_pred.view(-1).tolist()
+                test_targets += test_target.view(-1).tolist()
+
         elif test_target.shape[0] == batch["nxyz"].shape[0]:
             batch_ids = []
             count = 0
@@ -313,10 +324,21 @@ def test_model(model,
                     adding_val = num_bin[i - 1]
                     change = list(np.arange(val) + adding_val)
                 batch_ids.append(change)
-            test_preds += [test_pred[i].tolist() for i in batch_ids]
-            test_targets += [test_target[i].tolist() for i in batch_ids]
-            metric_bin += [metric[i].tolist() for i in batch_ids]
-        test_ids += batch["name"].detach().tolist()
-        # metric_bin += metric.detach().tolist()
+            if normalizer is not None:
+                preds_ = [
+                    normalizer.denorm(test_pred[i].view(-1)).tolist() for i in batch_ids
+                ]
+                targs_ = [
+                    normalizer.denorm(test_target[i].view(-1)).tolist()
+                    for i in batch_ids
+                ]
+            else:
+                preds_ = [test_pred[i].view(-1).tolist() for i in batch_ids]
+                targs_ = [test_target[i].view(-1).tolist() for i in batch_ids]
 
-    return test_preds, test_targets, test_ids, metric_bin
+            test_preds += [val for val in preds_]
+            test_targets += [val for val in targs_]
+
+        test_ids += batch["name"].detach().tolist()
+
+    return test_preds, test_targets, test_ids, metrics.avg
