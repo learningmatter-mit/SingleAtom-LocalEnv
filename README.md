@@ -24,7 +24,7 @@ conda activate persitePainn
 git clone https://github.com/learningmatter-mit/NeuralForceField.git
 # Go to the nff directory
 pip install .
-# Copy nff/utils/table_data to the installed directory
+# Copy nff/utils/table_data to the installed directory in conda envs python packages
 ```
 
 4. Install
@@ -36,12 +36,12 @@ pip install .
 
 ## Usage
 
-run `main.py` with detail_settings (e.g., `details.json` below)\
+run `main.py` with settings (e.g., `details.json` below)\
 
 - example command line
 
 ```bash
-python main.py --data data_raw/data.pkl --target magmom --cache data_cache/magmom --details details.json --savedir results/magmom
+python main.py --data data_raw/data.pkl --cache data_cache/data_cache --details details.json --savedir results
 ```
 
 - example `details.json`
@@ -55,13 +55,13 @@ python main.py --data data_raw/data.pkl --target magmom --cache data_cache/magmo
     "multifidelity": false
   },
   "modelparams": {
+    "output_keys": ["d_p"],
     "feat_dim": 128,
     "activation": "swish",
     "activation_f": "softplus",
     "n_rbf": 20,
     "cutoff": 6.5,
     "num_conv": 4,
-    "output_keys": ["d_p"],
     "atom_fea_len": 128,
     "h_fea_len": 256,
     "n_h": 4,
@@ -93,3 +93,4 @@ python main.py --data data_raw/data.pkl --target magmom --cache data_cache/magmo
   `conv_dropout`: dropout ratio in PaiNN\
   `readout_droupout`: dropout ratio in readoutblock\
   `fc_dropout`: dropout ratio in FFNN\
+  `n_fidelity`: number of adding values for node properties

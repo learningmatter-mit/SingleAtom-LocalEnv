@@ -24,93 +24,64 @@ from persite_painn.train import (
 )
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
-parser.add_argument("--data", default="", type=str, help="path to data")
-parser.add_argument("--target", help="name of target to predict")
-parser.add_argument("--cache",
-                    default="dataset_cache",
-                    type=str,
-                    help="cache where data is / will be stored")
-parser.add_argument("--details",
-                    default="details.json",
-                    type=str,
-                    help="json file of model parameters")
-parser.add_argument("--savedir",
-                    default="./results",
-                    type=str,
-                    help="saving directory")
-parser.add_argument("--workers",
-                    default=0,
-                    type=int,
-                    help="number of data loading workers")
-parser.add_argument("--epochs",
-                    default=1500,
-                    type=int,
-                    help="number of total epochs to run")
-parser.add_argument("--start_epoch",
-                    default=0,
-                    type=int,
-                    help="manual epoch number (useful on restarts)")
-parser.add_argument("-b",
-                    "--batch_size",
-                    default=64,
-                    type=int,
-                    help="mini-batch size")
-parser.add_argument("--loss_fn",
-                    default="MSE",
-                    type=str,
-                    help="choose a loss fn")
-parser.add_argument("--metric_fn",
-                    default="MAE",
-                    type=str,
-                    help="choose a metric fn")
-parser.add_argument("--optim",
-                    default="Adam",
-                    type=str,
-                    help="choose an optimizer")
-parser.add_argument("--lr",
-                    default=0.0005,
-                    type=float,
-                    help="initial learning rate")
-parser.add_argument("--weight_decay",
-                    default=0.01,
-                    type=float,
-                    help="weight decay")
-parser.add_argument("--print_freq",
-                    default=10,
-                    type=int,
-                    help="print frequency")
-parser.add_argument("--sched",
-                    default="reduce_on_plateau",
-                    type=str,
-                    help="scheduler")
-parser.add_argument("--resume",
-                    default="",
-                    type=str,
-                    help="path to latest checkpoint")
-parser.add_argument("--val_size",
-                    default=0.1,
-                    type=float,
-                    help="ratio of validation data to be loaded")
-parser.add_argument("--test_size",
-                    default=0.1,
-                    type=float,
-                    help="ratio of test data to be loaded")
+parser.add_argument("--data_raw", default="", type=str, help="path to raw data")
+parser.add_argument(
+    "--cache",
+    default="dataset_cache",
+    type=str,
+    help="cache where data is / will be stored",
+)
+parser.add_argument(
+    "--details", default="details.json", type=str, help="json file of model parameters"
+)
+parser.add_argument("--savedir", default="./results", type=str, help="saving directory")
+parser.add_argument(
+    "--workers", default=0, type=int, help="number of data loading workers"
+)
+parser.add_argument(
+    "--epochs", default=1500, type=int, help="number of total epochs to run"
+)
+parser.add_argument(
+    "--start_epoch",
+    default=0,
+    type=int,
+    help="manual epoch number (useful on restarts)",
+)
+parser.add_argument("-b", "--batch_size", default=64, type=int, help="mini-batch size")
+parser.add_argument("--loss_fn", default="MSE", type=str, help="choose a loss fn")
+parser.add_argument("--metric_fn", default="MAE", type=str, help="choose a metric fn")
+parser.add_argument("--optim", default="Adam", type=str, help="choose an optimizer")
+parser.add_argument("--lr", default=0.0005, type=float, help="initial learning rate")
+parser.add_argument("--weight_decay", default=0.01, type=float, help="weight decay")
+parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
+parser.add_argument("--sched", default="reduce_on_plateau", type=str, help="scheduler")
+parser.add_argument("--resume", default="", type=str, help="path to latest checkpoint")
+parser.add_argument(
+    "--val_size", default=0.1, type=float, help="ratio of validation data to be loaded"
+)
+parser.add_argument(
+    "--test_size", default=0.1, type=float, help="ratio of test data to be loaded"
+)
 parser.add_argument("--cuda", default=2, type=int, help="GPU setting")
 parser.add_argument("--device", default="cuda", type=str, help="cpu or cuda")
 parser.add_argument(
     "--early_stop_val",
     default=50,
     type=int,
-    help="early stopping condition for validation loss update count")
-parser.add_argument("--early_stop_train",
-                    default=0.01,
-                    type=float,
-                    help="early stopping condition for train loss tolerance")
+    help="early stopping condition for validation loss update count",
+)
+parser.add_argument(
+    "--early_stop_train",
+    default=0.01,
+    type=float,
+    help="early stopping condition for train loss tolerance",
+)
 parser.add_argument(
     "--seed",
     default=None,
     type=int,
-    help="Seed of random initialization to control the experiment")
+    help="Seed of random initialization to control the experiment",
+)
 
 
 def main(args):
@@ -124,13 +95,13 @@ def main(args):
         print(f"Number of Data: {len(dataset)}")
     else:
         try:
-            data = pkl.load(open(args.data, "rb"))
+            data = pkl.load(open(args.data_raw, "rb"))
         except ValueError:
             print("Path to data should be given --data")
         else:
             dataset = build_dataset(
                 raw_data=data,
-                prop_to_predict=args.target,
+                prop_to_predict=modelparams["output_keys"][0],
                 cutoff=modelparams["cutoff"],
                 site_prediction=details["site_prediction"],
                 seed=args.seed,
@@ -141,17 +112,17 @@ def main(args):
             print("Done caching dataset")
 
     train_set, val_set, test_set = split_train_validation_test(
-        dataset,
-        val_size=args.val_size,
-        test_size=args.test_size,
-        seed=args.seed)
+        dataset, val_size=args.val_size, test_size=args.test_size, seed=args.seed
+    )
 
     # Get model
-    model = get_model(modelparams,
-                      model_type=model_type,
-                      site_prediction=details["site_prediction"],
-                      spectra=details["spectra"],
-                      multifidelity=details["multifidelity"])
+    model = get_model(
+        modelparams,
+        model_type=model_type,
+        site_prediction=details["site_prediction"],
+        spectra=details["spectra"],
+        multifidelity=details["multifidelity"],
+    )
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
 
     # Normalizer
@@ -204,8 +175,11 @@ def main(args):
                 best_loss = checkpoint["best_loss"]
                 model.load_state_dict(checkpoint["state_dict"])
                 optimizer.load_state_dict(checkpoint["optimizer"])
-            print("=> loaded checkpoint '{}' (epoch {})".format(
-                args.resume, checkpoint["epoch"]))
+            print(
+                "=> loaded checkpoint '{}' (epoch {})".format(
+                    args.resume, checkpoint["epoch"]
+                )
+            )
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
     else:
@@ -230,9 +204,7 @@ def main(args):
         raise NameError("Only STMSE or MAE or SIS is allowed as --metric_fn")
 
     # Set scheduler
-    scheduler = get_scheduler(sched=args.sched,
-                              optimizer=optimizer,
-                              epochs=args.epochs)
+    scheduler = get_scheduler(sched=args.sched, optimizer=optimizer, epochs=args.epochs)
 
     # Set DataLoader
     train_loader = DataLoader(
@@ -260,7 +232,7 @@ def main(args):
         scheduler=scheduler,
         train_loader=train_loader,
         validation_loader=val_loader,
-        output_key=args.target,
+        output_key=modelparams["output_keys"][0],
         normalizer=normalizer,
     )
     # Train
@@ -288,7 +260,7 @@ def main(args):
     )
     test_targets, test_preds, test_ids, _ = test_model(
         model=model,
-        output_key=args.target,
+        output_key=modelparams["output_keys"][0],
         test_loader=test_loader,
         metric_fn=metric_fn,
         device=args.device,

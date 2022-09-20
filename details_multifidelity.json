@@ -1,0 +1,27 @@
+{
+    "modeltype": "Painn",
+    "details": {
+        "spectra": false,
+        "site_prediction": false,
+        "multifidelity": true
+    },
+    "modelparams": {
+        "output_keys": [
+            "target"
+        ],
+        "feat_dim": 64,
+        "activation": "swish",
+        "activation_f": "softplus",
+        "n_rbf": 20,
+        "cutoff": 6.5,
+        "num_conv": 4,
+        "atom_fea_len": 64,
+        "h_fea_len": 210,
+        "n_h": 4,
+        "n_outputs": 1,
+        "conv_dropout": 0.0,
+        "readout_dropout": 0.03,
+        "fc_dropout": 0.15,
+        "n_fidelity": 3
+    }
+}
