@@ -15,7 +15,7 @@ def sis_operation(pred_spectra, target_spectra, sigma=5):
 
 def sis_loss(pred_spectra, target_spectra):
     loss = torch.mean(
-        sis_operation(model_spectra=pred_spectra, target_spectra=target_spectra)
+        sis_operation(pred_spectra=pred_spectra, target_spectra=target_spectra)
     )
     return loss
 
