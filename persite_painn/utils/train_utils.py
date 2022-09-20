@@ -15,6 +15,7 @@ def inference(model, data, output_key, normalizer=None, device="cpu"):
             out (torch.Tensor): inference tensor
     """
     model.to(device)
+    model.eval()
     out = model(data)[output_key].detach()
     if normalizer is None:
         return out
