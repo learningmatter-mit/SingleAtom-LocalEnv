@@ -311,13 +311,6 @@ class ReadoutBlock(nn.Module):
                         dropout_rate=dropout,
                         activation=to_module(activation),
                     ),
-                    # Dense(
-                    #     in_features=output_atom_fea,
-                    #     out_features=output_atom_fea,
-                    #     bias=True,
-                    #     dropout_rate=dropout,
-                    #     activation=to_module(activation),
-                    # ),
                 )
                 for key in output_keys
             }

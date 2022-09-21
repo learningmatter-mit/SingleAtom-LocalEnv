@@ -16,7 +16,6 @@ POOL_DIC = {
 
 
 class Painn(nn.Module):
-
     def __init__(self, modelparams, **kwargs):
         """
         Args:
@@ -46,21 +45,27 @@ class Painn(nn.Module):
         num_conv = modelparams["num_conv"]
 
         self.embed_block = EmbeddingBlock(feat_dim=feat_dim)
-        self.message_blocks = nn.ModuleList([
-            MessageBlock(
-                feat_dim=feat_dim,
-                activation=activation,
-                n_rbf=n_rbf,
-                cutoff=cutoff,
-                learnable_k=learnable_k,
-                dropout=conv_dropout,
-            ) for _ in range(num_conv)
-        ])
-        self.update_blocks = nn.ModuleList([
-            UpdateBlock(feat_dim=feat_dim,
-                        activation=activation,
-                        dropout=conv_dropout) for _ in range(num_conv)
-        ])
+        self.message_blocks = nn.ModuleList(
+            [
+                MessageBlock(
+                    feat_dim=feat_dim,
+                    activation=activation,
+                    n_rbf=n_rbf,
+                    cutoff=cutoff,
+                    learnable_k=learnable_k,
+                    dropout=conv_dropout,
+                )
+                for _ in range(num_conv)
+            ]
+        )
+        self.update_blocks = nn.ModuleList(
+            [
+                UpdateBlock(
+                    feat_dim=feat_dim, activation=activation, dropout=conv_dropout
+                )
+                for _ in range(num_conv)
+            ]
+        )
         if self.multifideltiy:
             self.readout_block = ReadoutBlock(
                 feat_dim=feat_dim,
@@ -145,20 +150,16 @@ class Painn(nn.Module):
         # get r_ij including offsets and excluding
         # anything in the neighbor skin
         self.set_cutoff()
-        r_ij, nbrs = get_rij(xyz=xyz,
-                             batch=batch,
-                             nbrs=nbrs,
-                             cutoff=self.cutoff)
+        r_ij, nbrs = get_rij(xyz=xyz, batch=batch, nbrs=nbrs, cutoff=self.cutoff)
 
         s_i, v_i = self.embed_block(z_numbers, nbrs=nbrs, r_ij=r_ij)
         results = {}
 
         for i, message_block in enumerate(self.message_blocks):
             update_block = self.update_blocks[i]
-            ds_message, dv_message = message_block(s_j=s_i,
-                                                   v_j=v_i,
-                                                   r_ij=r_ij,
-                                                   nbrs=nbrs)
+            ds_message, dv_message = message_block(
+                s_j=s_i, v_j=v_i, r_ij=r_ij, nbrs=nbrs
+            )
 
             s_i = s_i + ds_message
             v_i = v_i + dv_message
