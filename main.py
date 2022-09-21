@@ -273,7 +273,7 @@ def main(args):
     best_checkpoint = torch.load(f"{args.savedir}/best_model.pth.tar")
     model.load_state_dict(best_checkpoint["state_dict"])
 
-    test_targets, test_preds, _, _ = test_model(
+    test_preds, test_targets, _, _ = test_model(
         model=model,
         output_key=modelparams["output_keys"][0],
         test_loader=test_loader,
