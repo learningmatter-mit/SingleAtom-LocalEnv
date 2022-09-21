@@ -106,7 +106,7 @@ class Trainer:
                 # compute gradient and do optim step
                 loss.backward()
                 # Gradient clipping maybe helpful for spectra learning
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.5)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 2.0)
                 self.optimizer.step()
 
                 # measure elapsed time

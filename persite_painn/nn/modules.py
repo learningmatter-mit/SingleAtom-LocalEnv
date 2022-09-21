@@ -303,6 +303,7 @@ class ReadoutBlock(nn.Module):
         self.readoutdict = nn.ModuleDict(
             {
                 key: nn.Sequential(
+                    nn.BatchNorm1d(feat_dim),
                     Dense(
                         in_features=feat_dim,
                         out_features=output_atom_fea,
@@ -310,17 +311,18 @@ class ReadoutBlock(nn.Module):
                         dropout_rate=dropout,
                         activation=to_module(activation),
                     ),
-                    Dense(
-                        in_features=output_atom_fea,
-                        out_features=output_atom_fea,
-                        bias=True,
-                        dropout_rate=dropout,
-                        activation=to_module(activation),
-                    ),
+                    # Dense(
+                    #     in_features=output_atom_fea,
+                    #     out_features=output_atom_fea,
+                    #     bias=True,
+                    #     dropout_rate=dropout,
+                    #     activation=to_module(activation),
+                    # ),
                 )
                 for key in output_keys
             }
         )
+
         self.scale = scale
         if self.scale:
             self.scale_shift = ScaleShift(means=means, stddevs=stddevs)
