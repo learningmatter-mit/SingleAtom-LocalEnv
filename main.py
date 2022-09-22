@@ -4,11 +4,11 @@ import pickle as pkl
 import sys
 
 import torch
-from nff.data import collate_dicts
 
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler
 
+from persite_painn.data import collate_dicts
 from persite_painn.data.builder import build_dataset, split_train_validation_test
 from persite_painn.nn.builder import load_params, get_model
 from persite_painn.train.builder import get_scheduler, get_optimizer
@@ -103,7 +103,7 @@ def main(args):
                 raw_data=data,
                 prop_to_predict=modelparams["output_keys"][0],
                 cutoff=modelparams["cutoff"],
-                site_prediction=details["site_prediction"],
+                multifidelity=details["multifidelity"],
                 seed=args.seed,
             )
             print(f"Number of Data: {len(dataset)}")
@@ -114,27 +114,36 @@ def main(args):
     train_set, val_set, test_set = split_train_validation_test(
         dataset, val_size=args.val_size, test_size=args.test_size, seed=args.seed
     )
+    # Normalizer
+    if not details["spectra"]:
+        normalizer = {}
+        targs = []
+        for batch in dataset:
+            targs.append(batch[modelparams["output_keys"][0]])
+        targs = torch.concat(targs).view(-1)
+        normalizer[modelparams["output_keys"][0]] = Normalizer(targs)
+
+        if details["multifidelity"]:
+            fidelity = []
+            for batch in dataset:
+                targs.append(batch[modelparams["output_keys"][0]])
+            fidelity = torch.concat(fidelity).view(-1)
+            normalizer_fidelity = Normalizer(fidelity)
+            modelparams.update({"means": normalizer_fidelity.mean})
+            modelparams.update({"stddevs": normalizer_fidelity.std})
+            normalizer["fidelity"] = normalizer_fidelity
+    else:
+        normalizer = None
 
     # Get model
     model = get_model(
         modelparams,
         model_type=model_type,
-        site_prediction=details["site_prediction"],
         spectra=details["spectra"],
         multifidelity=details["multifidelity"],
     )
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
 
-    # Normalizer
-    if not details["spectra"]:
-        targs = []
-        for batch in train_set:
-            targs.append(batch["target"])
-        targs = torch.concat(targs).view(-1)
-        normalizer = Normalizer(targs)
-    else:
-        normalizer = None
-    # model.to(device)
     # Set optimizer
     optimizer = get_optimizer(
         optim=args.optim,

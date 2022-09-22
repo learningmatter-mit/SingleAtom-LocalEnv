@@ -90,16 +90,28 @@ class Trainer:
                 batch = batch_to(batch, device)
                 # measure data loading time
                 data_time.update(time.time() - end)
-                target = batch["target"]
+                target = batch[self.output_key]
 
                 if self.normalizer is not None:
-                    target = self.normalizer.norm(target)
+                    target = self.normalizer[self.output_key].norm(target)
                 output = self.model(batch)[self.output_key]
 
-                loss = self.loss_fn(output, target)
+                if self.model.multifidelity:
+                    target_fidelity = batch["fidelity"]
+                    target_fidelity = self.normalizer["fidelity"].norm(target_fidelity)
+                    output_fidelity = self.model(batch)["key"]
+
+                    loss = self.loss_fn(output, target) + self.loss_fn(
+                        output_fidelity, target_fidelity
+                    )
+                    metric = self.metric_fn(output, target) + self.metric_fn(
+                        output_fidelity, target_fidelity
+                    )
+                else:
+                    loss = self.loss_fn(output, target)
+                    metric = self.metric_fn(output, target)
 
                 # measure accuracy and record loss
-                metric = self.metric_fn(output, target)
                 losses.update(loss.data.cpu().item(), target.size(0))
                 metrics.update(metric.cpu().item(), target.size(0))
 
@@ -148,6 +160,9 @@ class Trainer:
             best_loss = min(val_loss, best_loss)
             best_metric = min(val_metric, best_metric)
             if self.normalizer is not None:
+                normalizer_dict = {}
+                for key, val in self.normalizer:
+                    normalizer_dict[key] = val.state_dict()
                 self.save_checkpoint(
                     {
                         "epoch": epoch + 1,
@@ -155,7 +170,7 @@ class Trainer:
                         "best_metric": best_metric,
                         "best_loss": best_loss,
                         "optimizer": self.optimizer.state_dict(),
-                        "normalizer": self.normalizer.state_dict(),
+                        "normalizer": normalizer_dict,
                     },
                     is_best,
                     self.model_path,
@@ -205,16 +220,27 @@ class Trainer:
 
         for val_batch in self.validation_loader:
             val_batch = batch_to(val_batch, device)
-            target = val_batch["target"]
-            if self.normalizer is not None:
-                target = self.normalizer.norm(target)
+            target = val_batch[self.output_key]
 
-            # Compute output
+            if self.normalizer is not None:
+                target = self.normalizer[self.output_key].norm(target)
             output = self.model(val_batch)[self.output_key]
 
-            loss = self.loss_fn(output, target)
-            # measure accuracy and record loss
-            metric = self.metric_fn(output, target)
+            if self.model.multifidelity:
+                target_fidelity = val_batch["fidelity"]
+                target_fidelity = self.normalizer["fidelity"].norm(target_fidelity)
+                output_fidelity = self.model(val_batch)["key"]
+
+                loss = self.loss_fn(output, target) + self.loss_fn(
+                    output_fidelity, target_fidelity
+                )
+                metric = self.metric_fn(output, target) + self.metric_fn(
+                    output_fidelity, target_fidelity
+                )
+            else:
+                loss = self.loss_fn(output, target)
+                metric = self.metric_fn(output, target)
+
             losses.update(loss.data.cpu().item(), target.size(0))
             metrics.update(metric.cpu().item(), target.size(0))
 
@@ -271,6 +297,7 @@ class Trainer:
         self.optimizer.load_state_dict(self.optimizer.state_dict())
 
 
+# TODO should do on fidelity data also?
 def test_model(model, output_key, test_loader, metric_fn, device, normalizer=None):
     """
     test the model performances
@@ -292,9 +319,9 @@ def test_model(model, output_key, test_loader, metric_fn, device, normalizer=Non
     metrics = AverageMeter()
     for batch in test_loader:
         batch = batch_to(batch, device)
-        target = batch["target"]
+        target = batch[model.output_keys[0]]
         if normalizer is not None:
-            target = normalizer.norm(target)
+            target = normalizer[output_key].norm(target)
         target = target.to("cpu")
         # Compute output
         output = model(batch, inference=True)[output_key]
@@ -309,16 +336,18 @@ def test_model(model, output_key, test_loader, metric_fn, device, normalizer=Non
         test_target = target.detach().cpu()
         if test_target.shape[0] == batch["name"].shape[0] and test_target.shape[1] == 1:
             if normalizer is not None:
-                test_preds += normalizer.denorm(test_pred).view(-1).tolist()
-                test_targets += normalizer.denorm(test_target).view(-1).tolist()
+                test_preds += normalizer[output_key].denorm(test_pred).view(-1).tolist()
+                test_targets += (
+                    normalizer[output_key].denorm(test_target).view(-1).tolist()
+                )
             else:
                 test_preds += test_pred.view(-1).tolist()
                 test_targets += test_target.view(-1).tolist()
 
         if test_target.shape[0] == batch["name"].shape[0] and test_target.shape[1] > 1:
             if normalizer is not None:
-                test_preds += normalizer.denorm(test_pred).tolist()
-                test_targets += normalizer.denorm(test_target).tolist()
+                test_preds += normalizer[output_key].denorm(test_pred).tolist()
+                test_targets += normalizer[output_key].denorm(test_target).tolist()
             else:
                 test_preds += test_pred.tolist()
                 test_targets += test_target.view.tolist()
@@ -340,19 +369,21 @@ def test_model(model, output_key, test_loader, metric_fn, device, normalizer=Non
             if normalizer is not None:
                 if test_target.shape[1] == 1:
                     test_preds += [
-                        normalizer.denorm(test_pred[i]).view(-1).tolist()
+                        normalizer[output_key].denorm(test_pred[i]).view(-1).tolist()
                         for i in batch_ids
                     ]
                     test_targets += [
-                        normalizer.denorm(test_target[i]).view(-1).tolist()
+                        normalizer[output_key].denorm(test_target[i]).view(-1).tolist()
                         for i in batch_ids
                     ]
                 else:
                     test_preds += [
-                        normalizer.denorm(test_pred[i]).tolist() for i in batch_ids
+                        normalizer[output_key].denorm(test_pred[i]).tolist()
+                        for i in batch_ids
                     ]
                     test_targets += [
-                        normalizer.denorm(test_target[i]).tolist() for i in batch_ids
+                        normalizer[output_key].denorm(test_target[i]).tolist()
+                        for i in batch_ids
                     ]
 
             else:

@@ -88,6 +88,9 @@ def mse_loss(
     flattened_pred = prediction.view(1, -1)
     flattened_targ = target.view(1, -1)
     assert flattened_pred.shape[0] == flattened_targ.shape[0]
-    loss = torch.mean((flattened_pred - flattened_targ) ** 2)
+    nan_mask = torch.isnan(flattened_targ)
+    nan_mask = nan_mask.to(target.device)
+
+    loss = torch.mean((flattened_pred[~nan_mask] - flattened_targ[~nan_mask]) ** 2)
 
     return loss

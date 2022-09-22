@@ -2,7 +2,6 @@
     "modeltype": "Painn",
     "details": {
         "spectra": false,
-        "site_prediction": true,
         "multifidelity": false
     },
     "modelparams": {

@@ -1,7 +1,6 @@
 import torch
 from persite_painn.utils.tools import make_directed, get_rij
 from persite_painn.nn.modules import (
-    SumPool,
     EmbeddingBlock,
     MessageBlock,
     UpdateBlock,
@@ -9,10 +8,6 @@ from persite_painn.nn.modules import (
     FullyConnected,
 )
 from torch import nn
-
-POOL_DIC = {
-    "sum": SumPool,
-}
 
 
 class Painn(nn.Module):
@@ -31,6 +26,7 @@ class Painn(nn.Module):
         n_rbf = modelparams["n_rbf"]
         cutoff = modelparams["cutoff"]
         num_conv = modelparams["num_conv"]
+        # TODO make sure receiving list is the best
         self.output_keys = modelparams["output_keys"]
         learnable_k = modelparams.get("learnable_k", False)
         conv_dropout = modelparams.get("conv_dropout", 0)
@@ -38,8 +34,7 @@ class Painn(nn.Module):
         fc_dropout = modelparams.get("fc_dropout", 0)
         means = modelparams.get("means")
         stddevs = modelparams.get("stddevs")
-        pool_dic = modelparams.get("pool_dic")
-        self.site_prediction = kwargs["site_prediction"]
+
         self.multifideltiy = kwargs["multifidelity"]
         output_atom_fea_dim = modelparams["atom_fea_len"]
         num_conv = modelparams["num_conv"]
@@ -66,8 +61,14 @@ class Painn(nn.Module):
                 for _ in range(num_conv)
             ]
         )
+        # Fully connected layers
+        n_h = modelparams["n_h"]
+        h_fea_len = modelparams["h_fea_len"]
+        n_outputs = modelparams["n_outputs"]
+        self.force_positive = kwargs["spectra"]
+
         if self.multifideltiy:
-            self.readout_block = ReadoutBlock(
+            self.readout_block_target = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim,
                 output_keys=self.output_keys,
@@ -77,8 +78,7 @@ class Painn(nn.Module):
                 stddevs=stddevs,
                 scale=True,
             )
-        else:
-            self.readout_block = ReadoutBlock(
+            self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim,
                 output_keys=self.output_keys,
@@ -86,17 +86,18 @@ class Painn(nn.Module):
                 dropout=readout_dropout,
                 means=means,
                 stddevs=stddevs,
-                scale=False,
             )
-
-        # Fully connected layers
-        n_h = modelparams["n_h"]
-        h_fea_len = modelparams["h_fea_len"]
-        n_outputs = modelparams["n_outputs"]
-        self.force_positive = kwargs["spectra"]
-        if self.multifideltiy:
             n_fidelity = modelparams["n_fidelity"]
-            self.fullyconnected = FullyConnected(
+            self.fn_fidelity = FullyConnected(
+                output_atom_fea_dim=output_atom_fea_dim,
+                h_fea_len=h_fea_len,
+                n_h=n_h,
+                activation=activation_f,
+                n_outputs=n_fidelity,
+                dropout=fc_dropout,
+                force_positive=self.force_positive,
+            )
+            self.fn_target = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim + n_fidelity,
                 h_fea_len=h_fea_len,
                 n_h=n_h,
@@ -106,7 +107,16 @@ class Painn(nn.Module):
                 force_positive=self.force_positive,
             )
         else:
-            self.fullyconnected = FullyConnected(
+            self.readout_block = ReadoutBlock(
+                feat_dim=feat_dim,
+                output_atom_fea=output_atom_fea_dim,
+                output_keys=self.output_keys,
+                activation=activation,
+                dropout=readout_dropout,
+                means=means,
+                stddevs=stddevs,
+            )
+            self.fn = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim,
                 h_fea_len=h_fea_len,
                 n_h=n_h,
@@ -115,18 +125,6 @@ class Painn(nn.Module):
                 dropout=fc_dropout,
                 force_positive=self.force_positive,
             )
-
-        if pool_dic is None:
-            self.pool_dic = {key: SumPool() for key in self.output_keys}
-        else:
-            self.pool_dic = nn.ModuleDict({})
-            for out_key, sub_dic in pool_dic.items():
-                if out_key not in self.output_keys:
-                    continue
-                pool_name = sub_dic["name"].lower()
-                kwargs = sub_dic["param"]
-                pool_class = POOL_DIC[pool_name]
-                self.pool_dic[out_key] = pool_class(**kwargs)
 
         self.cutoff = cutoff
 
@@ -175,47 +173,13 @@ class Painn(nn.Module):
 
         return results, xyz, r_ij, nbrs
 
-    def pool(self, batch, atomwise_out):
-        if not hasattr(self, "output_keys"):
-            self.output_keys = list(self.readout_block.readoutdict.keys())
-
-        if not hasattr(self, "pool_dic"):
-            self.pool_dic = {key: SumPool() for key in self.output_keys}
-
-        all_results = {}
-
-        for key, pool_obj in self.pool_dic.items():
-            results = pool_obj(
-                batch=batch,
-                atomwise_output=atomwise_out,
-                out_keys=[key],
-            )
-
-            all_results.update(results)
-
-        return all_results
-
     def run(self, batch, xyz=None, inference=False):
 
         atomwise_out, xyz, _, _ = self.atomwise(batch=batch, xyz=xyz)
-        if self.multifideltiy:
-            persite_props = batch["site_prop"]
 
-            new_atomwise_out = {}
-            for key, val in atomwise_out.items():
-                new_val = torch.cat((persite_props, val), dim=1)
-                new_atomwise_out[key] = new_val
-            atomwise_out = new_atomwise_out
-        if not self.site_prediction:
-            all_results = self.pool(
-                batch=batch,
-                atomwise_out=atomwise_out,
-            )
-        else:
-            all_results = atomwise_out
         results = {}
-        for key, val in all_results.items():
-            out = self.fullyconnected(val)
+        for key, val in atomwise_out.items():
+            out = self.fn(val)
             results[key] = out
 
         if inference:
@@ -236,5 +200,36 @@ class Painn(nn.Module):
         """
 
         results = self.run(batch=batch, xyz=xyz, inference=inference)
+
+        return results
+
+
+class PainnMultifidelity(Painn):
+    def __init__(self, modelparams, **kwargs):
+        """
+        Args:
+            modelparams (dict): dictionary of model parameters
+
+        """
+
+        super().__init__(modelparams, **kwargs)
+
+    def run(self, batch, xyz=None, inference=False):
+
+        atomwise_out, xyz, _, _ = self.atomwise(batch=batch, xyz=xyz)
+
+        results = {}
+        for key, val in atomwise_out.items():
+            fidelity = self.fn_fidelity(val)
+            new_val = torch.cat((fidelity, val), dim=1)
+            out = self.fn_target(new_val)
+            results["fidelity"] = fidelity
+            results[key] = out
+
+        if inference:
+            # import here to avoid circular imports
+            from persite_painn.utils.cuda import batch_detach
+
+            results = batch_detach(results)
 
         return results

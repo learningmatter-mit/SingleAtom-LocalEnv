@@ -6,7 +6,7 @@ while checking for the validity of hyperparameters.
 import json
 
 import torch
-from persite_painn.nn.models import Painn
+from persite_painn.nn.models import Painn, PainnMultifidelity
 
 PARAMS_TYPE = {
     "Painn": {
@@ -23,9 +23,23 @@ PARAMS_TYPE = {
         "output_keys": list,
         "site_prediction": bool,
     },
+    "PainnMultifidelity": {
+        "feat_dim": int,
+        "activation": str,
+        "activation_f": str,
+        "n_rbf": int,
+        "cutoff": float,
+        "num_conv": int,
+        "atom_fea_len": int,
+        "n_h": int,
+        "h_fea_len": int,
+        "n_outputs": int,
+        "output_keys": list,
+        "site_prediction": bool,
+    },
 }
 
-MODEL_DICT = {"Painn": Painn}
+MODEL_DICT = {"Painn": Painn, "PainnMultifidelity": PainnMultifidelity}
 
 
 class ParameterError(Exception):
@@ -92,11 +106,12 @@ def load_model(params_path, model_path, model_type="Painn"):
             model, best_checkoint
     """
     details, params, model_type = load_params(params_path)
-    model = get_model(params,
-                      model_type=model_type,
-                      site_prediction=details["site_prediction"],
-                      spectra=details["spectra"],
-                      multifidelity=details["multifidelity"])
+    model = get_model(
+        params,
+        model_type=model_type,
+        spectra=details["spectra"],
+        multifidelity=details["multifidelity"],
+    )
     best_checkpoint = torch.load(model_path)
     model.load_state_dict(best_checkpoint["state_dict"])
     model.eval()

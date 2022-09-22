@@ -36,5 +36,7 @@ def mae_loss(
     flattened_pred = prediction.view(1, -1)
     flattened_targ = target.view(1, -1)
     assert flattened_pred.shape[0] == flattened_targ.shape[0]
+    nan_mask = torch.isnan(flattened_targ)
+    nan_mask = nan_mask.to(target.device)
 
-    return torch.mean(torch.abs(flattened_pred - flattened_targ))
+    return torch.mean(torch.abs(flattened_pred[~nan_mask] - flattened_targ[~nan_mask]))
