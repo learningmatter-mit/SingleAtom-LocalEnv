@@ -1,5 +1,5 @@
 {
-    "modeltype": "Painn",
+    "modeltype": "PainnMultifidelity",
     "details": {
         "spectra": false,
         "multifidelity": true
