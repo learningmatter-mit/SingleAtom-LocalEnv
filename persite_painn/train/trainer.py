@@ -99,7 +99,7 @@ class Trainer:
                 if self.model.multifidelity:
                     target_fidelity = batch["fidelity"]
                     target_fidelity = self.normalizer["fidelity"].norm(target_fidelity)
-                    output_fidelity = self.model(batch)["key"]
+                    output_fidelity = self.model(batch)["fidelity"]
 
                     loss = self.loss_fn(output, target) + self.loss_fn(
                         output_fidelity, target_fidelity
@@ -229,7 +229,7 @@ class Trainer:
             if self.model.multifidelity:
                 target_fidelity = val_batch["fidelity"]
                 target_fidelity = self.normalizer["fidelity"].norm(target_fidelity)
-                output_fidelity = self.model(val_batch)["key"]
+                output_fidelity = self.model(val_batch)["fidelity"]
 
                 loss = self.loss_fn(output, target) + self.loss_fn(
                     output_fidelity, target_fidelity

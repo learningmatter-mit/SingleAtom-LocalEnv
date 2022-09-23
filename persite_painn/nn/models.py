@@ -35,7 +35,7 @@ class Painn(nn.Module):
         means = modelparams.get("means")
         stddevs = modelparams.get("stddevs")
 
-        self.multifideltiy = kwargs["multifidelity"]
+        self.multifidelity = kwargs["multifidelity"]
         output_atom_fea_dim = modelparams["atom_fea_len"]
         num_conv = modelparams["num_conv"]
 
@@ -67,7 +67,7 @@ class Painn(nn.Module):
         n_outputs = modelparams["n_outputs"]
         self.force_positive = kwargs["spectra"]
 
-        if self.multifideltiy:
+        if self.multifidelity:
             self.readout_block_target = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim,
@@ -81,7 +81,7 @@ class Painn(nn.Module):
             self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim,
-                output_keys=self.output_keys,
+                output_keys=["fidelity"],
                 activation=activation,
                 dropout=readout_dropout,
                 means=means,
@@ -151,7 +151,7 @@ class Painn(nn.Module):
         r_ij, nbrs = get_rij(xyz=xyz, batch=batch, nbrs=nbrs, cutoff=self.cutoff)
 
         s_i, v_i = self.embed_block(z_numbers, nbrs=nbrs, r_ij=r_ij)
-        results = {}
+        # results = {}
 
         for i, message_block in enumerate(self.message_blocks):
             update_block = self.update_blocks[i]
@@ -167,16 +167,15 @@ class Painn(nn.Module):
             s_i = s_i + ds_update
             v_i = v_i + dv_update
 
-        new_results = self.readout_block(s_i=s_i)
+        # new_results = {f"self.output_keys": s_i}self.readout_block(s_i=s_i)
 
-        results.update(new_results)
+        # results[self.output_keys[0]] = s_i
 
-        return results, xyz, r_ij, nbrs
+        return s_i, xyz, r_ij, nbrs
 
     def run(self, batch, xyz=None, inference=False):
-
-        atomwise_out, xyz, _, _ = self.atomwise(batch=batch, xyz=xyz)
-
+        s_i, _, _, _ = self.atomwise(batch=batch, xyz=xyz)
+        atomwise_out = self.readout_block(s_i=s_i)
         results = {}
         for key, val in atomwise_out.items():
             out = self.fn(val)
@@ -203,6 +202,10 @@ class Painn(nn.Module):
 
         return results
 
+    @property
+    def count_parameters(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
 
 class PainnMultifidelity(Painn):
     def __init__(self, modelparams, **kwargs):
@@ -216,14 +219,17 @@ class PainnMultifidelity(Painn):
 
     def run(self, batch, xyz=None, inference=False):
 
-        atomwise_out, xyz, _, _ = self.atomwise(batch=batch, xyz=xyz)
+        s_i, xyz, _, _ = self.atomwise(batch=batch, xyz=xyz)
 
+        atomwise_out_fidelity = self.readout_block_fidelity(s_i=s_i)
+        atomwise_out_target = self.readout_block_target(s_i=s_i)
         results = {}
-        for key, val in atomwise_out.items():
+        for key, val in atomwise_out_fidelity.items():
             fidelity = self.fn_fidelity(val)
+            results[key] = fidelity
+        for key, val in atomwise_out_target.items():
             new_val = torch.cat((fidelity, val), dim=1)
             out = self.fn_target(new_val)
-            results["fidelity"] = fidelity
             results[key] = out
 
         if inference:

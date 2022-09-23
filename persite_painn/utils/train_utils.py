@@ -25,10 +25,6 @@ def inference(model, data, output_key, normalizer=None, device="cpu"):
         return out
 
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
 TESNOR = torch.Tensor
 
 

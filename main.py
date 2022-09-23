@@ -121,17 +121,21 @@ def main(args):
         for batch in train_set:
             targs.append(batch[modelparams["output_keys"][0]])
         targs = torch.concat(targs).view(-1)
-        normalizer[modelparams["output_keys"][0]] = Normalizer(targs)
+        nan_mask_targs = torch.isnan(targs)
+        filtered_targs = targs[~nan_mask_targs]
+
+        normalizer[modelparams["output_keys"][0]] = Normalizer(filtered_targs)
 
         if details["multifidelity"]:
             fidelity = []
             for batch in train_set:
-                targs.append(batch[modelparams["output_keys"][0]])
+                fidelity.append(batch["fidelity"])
             fidelity = torch.concat(fidelity).view(-1)
             nan_mask = torch.isnan(fidelity)
-            normalizer_fidelity = Normalizer(fidelity[nan_mask])
-            modelparams.update({"means": normalizer_fidelity.mean})
-            modelparams.update({"stddevs": normalizer_fidelity.std})
+            filtered_fidelity = fidelity[~nan_mask]
+            normalizer_fidelity = Normalizer(filtered_fidelity)
+            modelparams.update({"means": {"fidelity": normalizer_fidelity.mean}})
+            modelparams.update({"stddevs": {"fidelity": normalizer_fidelity.std}})
             normalizer["fidelity"] = normalizer_fidelity
     else:
         normalizer = None
