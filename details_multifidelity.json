@@ -8,19 +8,19 @@
         "output_keys": [
             "target"
         ],
-        "feat_dim": 64,
+        "feat_dim": 128,
         "activation": "swish",
-        "activation_f": "softplus",
+        "activation_f": "ReLU",
         "n_rbf": 20,
         "cutoff": 6.5,
         "num_conv": 4,
-        "atom_fea_len": 64,
+        "atom_fea_len": 128,
         "h_fea_len": 210,
         "n_h": 4,
-        "n_outputs": 1,
         "conv_dropout": 0.0,
         "readout_dropout": 0.03,
-        "fc_dropout": 0.15,
+        "fc_dropout": 0.05,
+        "n_outputs": 2,
         "n_fidelity": 3
     }
 }

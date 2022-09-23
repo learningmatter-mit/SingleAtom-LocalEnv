@@ -51,7 +51,6 @@ python main.py --data data_raw/data.pkl --cache data_cache/data_cache --details 
   "modeltype": "Painn",
   "details": {
     "spectra": false,
-    "site_prediction": true,
     "multifidelity": false
   },
   "modelparams": {
@@ -76,7 +75,6 @@ python main.py --data data_raw/data.pkl --cache data_cache/data_cache --details 
 - Modeltype: Type of model
 - Details: \
   `spectra`: whether you predict spectra (To impose the ouptuts to be positive if true)\
-  `site_prediction`: whether you predict per-site properties (To determine pool) \
   `multifidelity`: whether you use multi-fidelity stretagy (To add atomwise properties)
 - Modelparams:\
   `feat_dim`: number of features in PaiNN\

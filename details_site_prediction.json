@@ -6,7 +6,7 @@
     },
     "modelparams": {
         "output_keys": [
-            "d_p"
+            "target"
         ],
         "feat_dim": 128,
         "activation": "swish",
@@ -15,11 +15,11 @@
         "cutoff": 6.5,
         "num_conv": 4,
         "atom_fea_len": 128,
-        "h_fea_len": 256,
+        "h_fea_len": 210,
         "n_h": 4,
-        "n_outputs": 1,
         "conv_dropout": 0.0,
-        "readout_dropout": 0.05,
-        "fc_dropout": 0.05
+        "readout_dropout": 0.03,
+        "fc_dropout": 0.05,
+        "n_outputs": 3
     }
 }
