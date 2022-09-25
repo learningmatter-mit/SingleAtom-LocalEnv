@@ -4,24 +4,23 @@ import pickle as pkl
 import sys
 
 import torch
-
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler
 
 from persite_painn.data import collate_dicts
 from persite_painn.data.builder import build_dataset, split_train_validation_test
-from persite_painn.nn.builder import load_params, get_model
-from persite_painn.train.builder import get_scheduler, get_optimizer
-from persite_painn.utils.train_utils import Normalizer
-
-from persite_painn.train.trainer import Trainer, test_model
+from persite_painn.nn.builder import get_model, load_params
 from persite_painn.train import (
-    stmse_loss,
-    mae_loss,
-    mse_loss,
-    sid_loss,
-    sis_loss,
+    mae_operation,
+    mse_operation,
+    sid_operation,
+    sis_operation,
+    stmse_operation,
 )
+from persite_painn.train.builder import get_optimizer, get_scheduler, get_loss_metric_fn
+from persite_painn.train.trainer import Trainer
+from persite_painn.train.evaluate import test_model
+from persite_painn.utils.train_utils import Normalizer
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
 parser.add_argument("--data_raw", default="", type=str, help="path to raw data")
@@ -52,7 +51,7 @@ parser.add_argument("--loss_fn", default="MSE", type=str, help="choose a loss fn
 parser.add_argument("--metric_fn", default="MAE", type=str, help="choose a metric fn")
 parser.add_argument("--optim", default="Adam", type=str, help="choose an optimizer")
 parser.add_argument("--lr", default=0.0005, type=float, help="initial learning rate")
-parser.add_argument("--weight_decay", default=0.01, type=float, help="weight decay")
+parser.add_argument("--weight_decay", default=0.0005, type=float, help="weight decay")
 parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
 parser.add_argument("--sched", default="reduce_on_plateau", type=str, help="scheduler")
 parser.add_argument("--resume", default="", type=str, help="path to latest checkpoint")
@@ -201,19 +200,63 @@ def main(args):
         best_loss = 1e10
 
     # Set loss function
+    if details["multifidelity"]:
+        loss_coeff = modelparams["loss_coeff"]
+        correspondence_keys = {"fidelity": "fidelity", "target": "target"}
+    else:
+        loss_coeff = {modelparams["output_keys"][0]: 1.0}
+        correspondence_keys = {
+            modelparams["output_keys"][0]: modelparams["output_keys"][0]
+        }
+
     if args.loss_fn == "SID":
-        loss_fn = sid_loss
+        loss_fn = get_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=sid_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            spectra=details["spectra"],
+        )
+        # loss_fn = sid_loss
     elif args.loss_fn == "MSE":
-        loss_fn = mse_loss
+        loss_fn = get_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=mse_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            spectra=details["spectra"],
+        )
+        # loss_fn = mse_loss
     else:
         raise NameError("Only SID or MSE is allowed as --loss_fn")
     # Set metric function
     if args.metric_fn == "STMSE":
-        metric_fn = stmse_loss
+        metric_fn = get_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=stmse_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            spectra=details["spectra"],
+        )
+        # metric_fn = stmse_loss
     elif args.metric_fn == "MAE":
-        metric_fn = mae_loss
+        metric_fn = get_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=mae_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            spectra=details["spectra"],
+        )
+        # metric_fn = mae_loss
     elif args.metric_fn == "SIS":
-        metric_fn = sis_loss
+        metric_fn = get_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=sis_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            spectra=details["spectra"],
+        )
+        # metric_fn = sis_loss
     else:
         raise NameError("Only STMSE or MAE or SIS is allowed as --metric_fn")
 
@@ -234,12 +277,6 @@ def main(args):
         num_workers=args.workers,
         collate_fn=collate_dicts,
     )
-    test_loader = DataLoader(
-        test_set,
-        batch_size=args.batch_size,
-        num_workers=args.workers,
-        collate_fn=collate_dicts,
-    )
     # Save ids
     train_ids = []
     for item in train_set:
@@ -247,13 +284,9 @@ def main(args):
     val_ids = []
     for item in val_set:
         val_ids.append(item["name"].item())
-    test_ids = []
-    for item in test_set:
-        test_ids.append(item["name"].item())
 
     pkl.dump(train_ids, open(f"{args.savedir}/train_ids.pkl", "wb"))
     pkl.dump(val_ids, open(f"{args.savedir}/val_ids.pkl", "wb"))
-    pkl.dump(test_ids, open(f"{args.savedir}/test_ids.pkl", "wb"))
 
     early_stop = [args.early_stop_val, args.early_stop_train]
 
@@ -281,28 +314,51 @@ def main(args):
     )
 
     # Test results
+    test_loader = DataLoader(
+        test_set,
+        batch_size=args.batch_size,
+        num_workers=args.workers,
+        collate_fn=collate_dicts,
+    )
     test_targets = []
     test_preds = []
     test_ids = []
     best_checkpoint = torch.load(f"{args.savedir}/best_model.pth.tar")
     model.load_state_dict(best_checkpoint["state_dict"])
 
-    test_preds, test_targets, _, _ = test_model(
+    (
+        test_preds,
+        test_targets,
+        _,
+        _,
+        test_preds_fidelity,
+        test_targets_fidelity,
+    ) = test_model(
         model=model,
         output_key=modelparams["output_keys"][0],
         test_loader=test_loader,
         metric_fn=metric_fn,
-        device=args.device,
+        device="cpu",
         normalizer=normalizer,
+        multifidelity=details["multifidelity"],
     )
+    test_ids = []
+    for item in test_set:
+        test_ids.append(item["name"].item())
 
     # Save Test Results
+    pkl.dump(test_ids, open(f"{args.savedir}/test_ids.pkl", "wb"))
     pkl.dump(test_preds, open(f"{args.savedir}/test_preds.pkl", "wb"))
     pkl.dump(test_targets, open(f"{args.savedir}/test_targs.pkl", "wb"))
+    pkl.dump(test_preds_fidelity, open(f"{args.savedir}/test_preds_fidelity.pkl", "wb"))
+    pkl.dump(
+        test_targets_fidelity, open(f"{args.savedir}/test_targs_fidelity.pkl", "wb")
+    )
 
 
 if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
+    # TODO CUDA Settings confusing
     if args.device == "cuda":
         assert torch.cuda.is_available(), "cuda is not available"
         CUDA_LAUNCH_BLOCKING = 1

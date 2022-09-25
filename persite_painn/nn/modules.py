@@ -1,6 +1,6 @@
 import torch
-from nff.nn.layers import CosineEnvelope, Dense, PainnRadialBasis
-from persite_painn.utils.tools import layer_types
+from persite_painn.nn.layers import to_module, CosineEnvelope, Dense, PainnRadialBasis
+
 from persite_painn.utils.scatter import scatter_add
 from torch import nn
 from torch_scatter import scatter
@@ -22,10 +22,6 @@ def preprocess_r(r_ij):
     unit = r_ij / dist.reshape(-1, 1)
 
     return dist, unit
-
-
-def to_module(activation):
-    return layer_types[activation]()
 
 
 class nn_exp(nn.Module):

@@ -30,6 +30,7 @@ def plot_hexbin(
         "ads_e": "adsorption energy",
         "acid_stab": "electrochemical stability",
         "bandcenter": "DOS band center",
+        "bandwidth": "DOS band width",
         "phonon": "atomic vibration frequency",
         "bader": "Bader charge",
     }
@@ -46,6 +47,7 @@ def plot_hexbin(
         "ads_e": "eV",
         "acid_stab": "eV/atom",
         "bandcenter": "eV",
+        "bandwidth": "eV",
         "phonon": "THz",
         "bader": "$q_e$",
     }

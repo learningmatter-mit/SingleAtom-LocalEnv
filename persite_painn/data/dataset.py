@@ -10,6 +10,7 @@ from ase import Atoms
 from ase.neighborlist import neighbor_list
 from torch.utils.data import Dataset as TorchDataset
 
+# TODO migrate from nff
 from nff.data.parallel import (
     featurize_parallel,
     NUM_PROCS,

@@ -10,10 +10,10 @@
         ],
         "feat_dim": 128,
         "activation": "swish",
-        "activation_f": "ReLU",
+        "activation_f": "softplus",
         "n_rbf": 20,
         "cutoff": 6.5,
-        "num_conv": 4,
+        "num_conv": 3,
         "atom_fea_len": 128,
         "h_fea_len": 210,
         "n_h": 4,
@@ -21,6 +21,10 @@
         "readout_dropout": 0.03,
         "fc_dropout": 0.05,
         "n_outputs": 2,
-        "n_fidelity": 3
+        "n_fidelity": 3,
+        "loss_coeff": {
+            "target": 1.2,
+            "fidelity": 0.5
+        }
     }
 }

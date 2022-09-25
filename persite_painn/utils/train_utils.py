@@ -16,12 +16,11 @@ def inference(model, data, output_key, normalizer=None, device="cpu"):
     """
     model.to(device)
     model.eval()
-    out = model(data)[output_key].detach()
+    out = model(data, inference=True)[output_key]
     if normalizer is None:
         return out
     else:
-        normalizer = Normalizer(normalizer)
-        out = normalizer.denorm(out)
+        out = normalizer[output_key].denorm(out)
         return out
 
 
