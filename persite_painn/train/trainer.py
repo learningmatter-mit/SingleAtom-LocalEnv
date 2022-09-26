@@ -202,29 +202,29 @@ class Trainer:
             test_ids = []
 
         end = time.time()
+        with torch.no_grad():
+            for val_batch in self.validation_loader:
+                val_batch = batch_to(val_batch, device)
+                target = val_batch[self.output_key]
 
-        for val_batch in self.validation_loader:
-            val_batch = batch_to(val_batch, device)
-            target = val_batch[self.output_key]
+                output = self.model(val_batch)
 
-            output = self.model(val_batch)
+                loss = self.loss_fn(output, val_batch)
+                metric = self.metric_fn(output, val_batch)
 
-            loss = self.loss_fn(output, val_batch)
-            metric = self.metric_fn(output, val_batch)
+                losses.update(loss.data.cpu().item(), target.size(0))
+                metrics.update(metric.cpu().item(), target.size(0))
 
-            losses.update(loss.data.cpu().item(), target.size(0))
-            metrics.update(metric.cpu().item(), target.size(0))
+                if test:
+                    test_pred = output.data.cpu()
+                    test_target = target
+                    test_preds += test_pred.view(-1).tolist()
+                    test_targets += test_target.view(-1).tolist()
+                    test_ids += val_batch["name"]
 
-            if test:
-                test_pred = output.data.cpu()
-                test_target = target
-                test_preds += test_pred.view(-1).tolist()
-                test_targets += test_target.view(-1).tolist()
-                test_ids += val_batch["name"]
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+                # measure elapsed time
+                batch_time.update(time.time() - end)
+                end = time.time()
 
         print(
             "*Validatoin: \t"
@@ -266,4 +266,3 @@ class Trainer:
         self.model.device = device
         self.model.to(device)
         self.optimizer.load_state_dict(self.optimizer.state_dict())
-
