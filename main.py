@@ -360,9 +360,9 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
     # TODO CUDA Settings confusing
     if args.device == "cuda":
-        assert torch.cuda.is_available(), "cuda is not available"
-        CUDA_LAUNCH_BLOCKING = 1
+        os.environ["CUDA_LAUNCH_BLOCKING"] = str(1)
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
+        assert torch.cuda.is_available(), "cuda is not available"
 
     main(args)
