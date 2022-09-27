@@ -1,8 +1,12 @@
-import matplotlib.pyplot as plt
-from sklearn.metrics import mean_absolute_error
-from scipy.stats import pearsonr
-import numpy as np
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from pymatgen.core.periodic_table import Element
+from scipy.stats import pearsonr
+from sklearn.metrics import mean_absolute_error
+from tqdm import tqdm
 
 
 def plot_hexbin(
@@ -142,3 +146,133 @@ def plot_hexbin(
     )
 
     return r, mae, ax, hb
+
+
+def flatten(t):
+    return [item for sublist in t for item in sublist]
+
+
+def plot_violin(
+    test_ids,
+    structures,
+    test_targs,
+    test_preds,
+    color1,
+    color2,
+    target_index,
+    ylabel="y",
+    Z_range=[22, 30],
+    bader=False,
+):
+    matplotlib.rcParams.update({"font.size": 18})
+    ncore = {
+        21: 11,
+        22: 10,
+        23: 11,
+        24: 12,
+        25: 13,
+        26: 14,
+        27: 9,
+        28: 16,
+        29: 17,
+        30: 12,
+    }
+    for i in range(0, 21):
+        ncore.update({i: 0})
+    for i in range(31, 150):
+        ncore.update({i: 0})
+
+    pred_dictionary = {}
+    dictionary = {}
+
+    for index in tqdm(range(len(test_ids))):
+
+        id_ = test_ids[index]
+        structure = structures[id_]
+        elems = [Element(x.symbol).Z for x in structure.species]
+
+        pred = test_preds[index]
+        targ = test_targs[index]
+
+        if bader:
+
+            targ = [ncore[elems[i]] - targ[i][target_index] for i in range(len(targ))]
+            pred = [ncore[elems[i]] - pred[i][target_index] for i in range(len(pred))]
+
+        # get dictionary
+        for i in range(len(elems)):
+
+            elem = elems[i]
+            if bader:
+                y = targ[i]
+            else:
+                y = targ[i][target_index]
+
+            if elem in dictionary:
+                array = dictionary[elem]
+                array.append(y)
+                dictionary[elem] = array
+
+            else:
+                dictionary[elem] = [y]
+
+        # get pred_dictionary
+        for i in range(len(elems)):
+
+            elem = elems[i]
+            if bader:
+                y = pred[i]
+            else:
+                y = pred[i][target_index]
+
+            if elem in pred_dictionary:
+                array = pred_dictionary[elem]
+                array.append(y)
+                pred_dictionary[elem] = array
+
+            else:
+                pred_dictionary[elem] = [y]
+
+    df = pd.DataFrame(columns=("Z", "y", "hue"))
+    Zs = []
+    ys = []
+    hues = []
+
+    for Z in Z_range:
+
+        ys.append(dictionary[Z])
+        Zs.append([Z for i in range(len(dictionary[Z]))])
+        hues.append(["targ" for i in range(len(dictionary[Z]))])
+
+        ys.append(pred_dictionary[Z])
+        Zs.append([Z for i in range(len(pred_dictionary[Z]))])
+        hues.append(["pred" for i in range(len(pred_dictionary[Z]))])
+
+    Zs = flatten(Zs)
+    ys = flatten(ys)
+    hues = flatten(hues)
+
+    df["Z"] = Zs
+    df[ylabel] = ys
+    df["hue"] = hues
+
+    my_pal = {"targ": color1, "pred": color2}
+
+    ax = sns.violinplot(
+        x="Z",
+        y=ylabel,
+        hue="hue",
+        data=df,
+        palette=my_pal,
+        split=True,
+        inner=None,
+        linewidth=1,
+    )
+
+    # plt.ylim([-0.1,5.2])
+    plt.legend(loc="upper right")
+
+    xticks = [Element.from_Z(int(text._text)).symbol for text in ax.get_xticklabels()]
+    ax.set_xticklabels(xticks)
+
+    return ax
