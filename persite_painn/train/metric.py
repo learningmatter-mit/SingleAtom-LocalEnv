@@ -3,10 +3,13 @@ from .loss import sid_operation
 from persite_painn.utils.tools import gaussian_smoothing
 
 
-def sis_operation(prediction, target, sigma=5):
+def sis_operation(prediction, target, sigma=2):
 
     filtered_target = gaussian_smoothing(target, sigma)
     filtered_pred = gaussian_smoothing(prediction, sigma)
+    if filtered_target.dim() == 1:
+        filtered_target = filtered_target.unsqueeze(0)
+        filtered_pred = filtered_pred.unsqueeze(0)
     sid = sid_operation(filtered_pred, filtered_target)
     sis = 1 / (1 + sid)
 

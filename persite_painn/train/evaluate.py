@@ -11,6 +11,7 @@ def test_model(
     metric_fn,
     device,
     normalizer=None,
+    spectra=False,
     multifidelity=False,
 ):
     """
@@ -31,6 +32,7 @@ def test_model(
     test_ids = []
     test_targets_fidelity = []
     test_preds_fidelity = []
+    metric_bin = []
     metrics = AverageMeter()
     with torch.no_grad():
         for batch in test_loader:
@@ -38,12 +40,17 @@ def test_model(
             target = batch[output_key]
             # Compute output
             output = inference(model, batch, output_key, normalizer, device)
-            metric_output = model(batch, inference=True)
-
+            if device == "cpu":
+                metric_output = model(batch, inference=True)
+            else:
+                metric_output = model(batch)
             # measure accuracy and record loss
             metric = metric_fn(metric_output, batch)
 
-            metrics.update(metric.cpu().item(), target.size(0))
+            if spectra:
+                metrics.update(torch.mean(metric).cpu().item(), target.size(0))
+            else:
+                metrics.update(metric.cpu().item(), target.size(0))
 
             # Rearrange the outputs
             test_pred = output.data.cpu()
@@ -81,6 +88,10 @@ def test_model(
                     test_targets += [
                         test_target[i].view(-1).tolist() for i in batch_ids
                     ]
+                elif spectra:
+                    test_preds += [test_pred[i].tolist() for i in batch_ids]
+                    test_targets += [test_target[i].tolist() for i in batch_ids]
+                    metric_bin += [metric[i].tolist() for i in batch_ids]
                 else:
                     test_preds += [test_pred[i].tolist() for i in batch_ids]
                     test_targets += [test_target[i].tolist() for i in batch_ids]
@@ -107,14 +118,17 @@ def test_model(
                 test_targets_fidelity += [
                     target_fidelity[i].tolist() for i in batch_ids
                 ]
-
+            if spectra:
+                metric_out = metric_bin
+            else:
+                metric_out = metrics.avg
             test_ids += batch["name"].detach().tolist()
 
     return (
         test_preds,
         test_targets,
         test_ids,
-        metrics.avg,
+        metric_out,
         test_preds_fidelity,
         test_targets_fidelity,
     )

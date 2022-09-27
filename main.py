@@ -340,6 +340,7 @@ def main(args):
         metric_fn=metric_fn,
         device="cpu",
         normalizer=normalizer,
+        spectra=details["spectra"],
         multifidelity=details["multifidelity"],
     )
     test_ids = []

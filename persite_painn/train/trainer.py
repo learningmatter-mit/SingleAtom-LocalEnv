@@ -10,8 +10,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 MAX_EPOCHS = 100
 BEST_METRIC = 1e10
 BEST_LOSS = 1e10
-EARLY_STOP_VAL = 100
-EARLY_STOP_TRAIN = 0.001
 
 
 class AverageMeter:
@@ -65,7 +63,7 @@ class Trainer:
         n_epochs=MAX_EPOCHS,
         best_loss=BEST_LOSS,
         best_metric=BEST_METRIC,
-        early_stop=[EARLY_STOP_VAL, EARLY_STOP_TRAIN],
+        early_stop=[50, 0.01],
         save_results=True,
     ):
 
