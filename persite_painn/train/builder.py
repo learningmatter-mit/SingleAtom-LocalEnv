@@ -74,7 +74,12 @@ def get_scheduler(sched, optimizer, epochs, lr_update_rate=30, lr_milestones=[10
 
 
 def get_loss_metric_fn(
-    loss_coef, operation, correspondence_keys=None, normalizer=None, spectra=False, persite=False,
+    loss_coef,
+    operation,
+    correspondence_keys=None,
+    normalizer=None,
+    spectra=False,
+    persite=False,
 ):
     """
     Build a general  loss function.
@@ -135,13 +140,12 @@ def get_loss_metric_fn(
                 targ = targ[valid_idx]
                 pred = pred[valid_idx]
 
-            if len(targ) != 0 and persite:
+            if len(targ) != 0:
                 diff = operation(prediction=pred, target=targ)
-                err_sq = coef * diff
-                loss += err_sq
-            else:
-                diff = operation(prediction=pred, target=targ)
-                err_sq = coef * torch.mean(diff)
+                if persite:
+                    err_sq = coef * diff
+                else:
+                    err_sq = coef * torch.mean(diff)
                 loss += err_sq
 
         return loss
