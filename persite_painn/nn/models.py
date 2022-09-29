@@ -1,6 +1,11 @@
 import torch
-from persite_painn.nn.modules import (EmbeddingBlock, FullyConnected,
-                                      MessageBlock, ReadoutBlock, UpdateBlock)
+from persite_painn.nn.modules import (
+    EmbeddingBlock,
+    FullyConnected,
+    MessageBlock,
+    ReadoutBlock,
+    UpdateBlock,
+)
 from persite_painn.utils.tools import get_rij, make_directed
 from torch import nn
 
@@ -63,9 +68,10 @@ class Painn(nn.Module):
         self.force_positive = kwargs["spectra"]
 
         if self.multifidelity:
+            # TODO: This now be the same readout block for both fidelity and target
             self.readout_block_target = ReadoutBlock(
                 feat_dim=feat_dim,
-                output_atom_fea=output_atom_fea_dim,
+                output_atom_fea=output_atom_fea_dim[self.output_keys[0]],
                 output_keys=self.output_keys,
                 activation=activation,
                 dropout=readout_dropout,
@@ -75,27 +81,26 @@ class Painn(nn.Module):
             )
             self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
-                output_atom_fea=output_atom_fea_dim,
+                output_atom_fea=output_atom_fea_dim["fidelity"],
                 output_keys=["fidelity"],
                 activation=activation,
                 dropout=readout_dropout,
-                means=means,
-                stddevs=stddevs,
             )
             n_fidelity = modelparams["n_fidelity"]
             self.fn_fidelity = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim,
-                h_fea_len=h_fea_len,
-                n_h=n_h,
+                output_atom_fea_dim=output_atom_fea_dim["fidelity"],
+                h_fea_len=h_fea_len["fidelity"],
+                n_h=n_h["fidelity"],
                 activation=activation_f,
                 n_outputs=n_fidelity,
                 dropout=fc_dropout,
                 force_positive=self.force_positive,
             )
             self.fn_target = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim + n_fidelity,
-                h_fea_len=h_fea_len,
-                n_h=n_h,
+                output_atom_fea_dim=output_atom_fea_dim[self.output_keys[0]]
+                + n_fidelity,
+                h_fea_len=h_fea_len[self.output_keys[0]],
+                n_h=n_h[self.output_keys[0]],
                 activation=activation_f,
                 n_outputs=n_outputs,
                 dropout=fc_dropout,
@@ -104,7 +109,7 @@ class Painn(nn.Module):
         else:
             self.readout_block = ReadoutBlock(
                 feat_dim=feat_dim,
-                output_atom_fea=output_atom_fea_dim,
+                output_atom_fea=output_atom_fea_dim[self.output_keys[0]],
                 output_keys=self.output_keys,
                 activation=activation,
                 dropout=readout_dropout,
@@ -112,9 +117,9 @@ class Painn(nn.Module):
                 stddevs=stddevs,
             )
             self.fn = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim,
-                h_fea_len=h_fea_len,
-                n_h=n_h,
+                output_atom_fea_dim=output_atom_fea_dim[self.output_keys[0]],
+                h_fea_len=h_fea_len[self.output_keys[0]],
+                n_h=n_h[self.output_keys[0]],
                 activation=activation_f,
                 n_outputs=n_outputs,
                 dropout=fc_dropout,

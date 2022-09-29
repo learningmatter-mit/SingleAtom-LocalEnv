@@ -7,6 +7,8 @@ import json
 
 import torch
 from persite_painn.nn.models import Painn, PainnMultifidelity
+from typing import Dict
+
 
 PARAMS_TYPE = {
     "Painn": {
@@ -16,9 +18,9 @@ PARAMS_TYPE = {
         "n_rbf": int,
         "cutoff": float,
         "num_conv": int,
-        "atom_fea_len": int,
-        "n_h": int,
-        "h_fea_len": int,
+        "atom_fea_len": Dict,
+        "n_h": Dict,
+        "h_fea_len": Dict,
         "n_outputs": int,
         "output_keys": list,
         "site_prediction": bool,
@@ -30,9 +32,9 @@ PARAMS_TYPE = {
         "n_rbf": int,
         "cutoff": float,
         "num_conv": int,
-        "atom_fea_len": int,
-        "n_h": int,
-        "h_fea_len": int,
+        "atom_fea_len": Dict,
+        "n_h": Dict,
+        "h_fea_len": Dict,
         "n_outputs": int,
         "output_keys": list,
         "site_prediction": bool,

@@ -133,8 +133,8 @@ def main(args):
             nan_mask = torch.isnan(fidelity)
             filtered_fidelity = fidelity[~nan_mask]
             normalizer_fidelity = Normalizer(filtered_fidelity)
-            modelparams.update({"means": {"fidelity": normalizer_fidelity.mean}})
-            modelparams.update({"stddevs": {"fidelity": normalizer_fidelity.std}})
+            # modelparams.update({"means": {"fidelity": normalizer_fidelity.mean}})
+            # modelparams.update({"stddevs": {"fidelity": normalizer_fidelity.std}})
             normalizer["fidelity"] = normalizer_fidelity
     else:
         normalizer = None
