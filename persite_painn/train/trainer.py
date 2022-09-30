@@ -3,7 +3,6 @@ import sys
 import time
 from typing import Dict
 
-import numpy as np
 import torch
 from persite_painn.utils.cuda import batch_to
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -11,8 +10,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 MAX_EPOCHS = 100
 BEST_METRIC = 1e10
 BEST_LOSS = 1e10
-EARLY_STOP_VAL = 100
-EARLY_STOP_TRAIN = 0.001
 
 
 class AverageMeter:
@@ -66,13 +63,11 @@ class Trainer:
         n_epochs=MAX_EPOCHS,
         best_loss=BEST_LOSS,
         best_metric=BEST_METRIC,
-        early_stop=[EARLY_STOP_VAL, EARLY_STOP_TRAIN],
+        early_stop=[50, 0.01],
         save_results=True,
     ):
 
         # switch to train mode
-        self.to(device)
-        self.model.train()
         # train model
         train_losses = []
         train_metrics = []
@@ -80,6 +75,8 @@ class Trainer:
         val_metrics = []
         count = 0
         for epoch in range(start_epoch, n_epochs):
+            self.model.train()
+            self.to(device)
             batch_time = AverageMeter()
             data_time = AverageMeter()
             losses = AverageMeter()
@@ -90,16 +87,14 @@ class Trainer:
                 batch = batch_to(batch, device)
                 # measure data loading time
                 data_time.update(time.time() - end)
-                target = batch["target"]
+                target = batch[self.output_key]
 
-                if self.normalizer is not None:
-                    target = self.normalizer.norm(target)
-                output = self.model(batch)[self.output_key]
+                output = self.model(batch)
 
-                loss = self.loss_fn(output, target)
+                loss = self.loss_fn(output, batch)
+                metric = self.metric_fn(output, batch)
 
                 # measure accuracy and record loss
-                metric = self.metric_fn(output, target)
                 losses.update(loss.data.cpu().item(), target.size(0))
                 metrics.update(metric.cpu().item(), target.size(0))
 
@@ -148,6 +143,9 @@ class Trainer:
             best_loss = min(val_loss, best_loss)
             best_metric = min(val_metric, best_metric)
             if self.normalizer is not None:
+                normalizer_dict = {}
+                for key, val in self.normalizer.items():
+                    normalizer_dict[key] = val.state_dict()
                 self.save_checkpoint(
                     {
                         "epoch": epoch + 1,
@@ -155,7 +153,7 @@ class Trainer:
                         "best_metric": best_metric,
                         "best_loss": best_loss,
                         "optimizer": self.optimizer.state_dict(),
-                        "normalizer": self.normalizer.state_dict(),
+                        "normalizer": normalizer_dict,
                     },
                     is_best,
                     self.model_path,
@@ -202,32 +200,29 @@ class Trainer:
             test_ids = []
 
         end = time.time()
+        with torch.no_grad():
+            for val_batch in self.validation_loader:
+                val_batch = batch_to(val_batch, device)
+                target = val_batch[self.output_key]
 
-        for val_batch in self.validation_loader:
-            val_batch = batch_to(val_batch, device)
-            target = val_batch["target"]
-            if self.normalizer is not None:
-                target = self.normalizer.norm(target)
+                output = self.model(val_batch)
 
-            # Compute output
-            output = self.model(val_batch)[self.output_key]
+                loss = self.loss_fn(output, val_batch)
+                metric = self.metric_fn(output, val_batch)
 
-            loss = self.loss_fn(output, target)
-            # measure accuracy and record loss
-            metric = self.metric_fn(output, target)
-            losses.update(loss.data.cpu().item(), target.size(0))
-            metrics.update(metric.cpu().item(), target.size(0))
+                losses.update(loss.data.cpu().item(), target.size(0))
+                metrics.update(metric.cpu().item(), target.size(0))
 
-            if test:
-                test_pred = output.data.cpu()
-                test_target = target
-                test_preds += test_pred.view(-1).tolist()
-                test_targets += test_target.view(-1).tolist()
-                test_ids += val_batch["name"]
+                if test:
+                    test_pred = output.data.cpu()
+                    test_target = target
+                    test_preds += test_pred.view(-1).tolist()
+                    test_targets += test_target.view(-1).tolist()
+                    test_ids += val_batch["name"]
 
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+                # measure elapsed time
+                batch_time.update(time.time() - end)
+                end = time.time()
 
         print(
             "*Validatoin: \t"
@@ -269,102 +264,3 @@ class Trainer:
         self.model.device = device
         self.model.to(device)
         self.optimizer.load_state_dict(self.optimizer.state_dict())
-
-
-def test_model(model, output_key, test_loader, metric_fn, device, normalizer=None):
-    """
-    test the model performances
-    Args:
-        model: Model,
-        output_key: str,
-        test_loader: DataLoader,
-        metric_fn: metric function,
-        device: "cpu" or "cuda",
-    Return:
-        Lists of prediction, targets, ids, and metric
-    """
-    model.to(device)
-    model.eval()
-    test_targets = []
-    test_preds = []
-    test_ids = []
-
-    metrics = AverageMeter()
-    for batch in test_loader:
-        batch = batch_to(batch, device)
-        target = batch["target"]
-        if normalizer is not None:
-            target = normalizer.norm(target)
-        target = target.to("cpu")
-        # Compute output
-        output = model(batch, inference=True)[output_key]
-
-        # measure accuracy and record loss
-        metric = metric_fn(output, target)
-
-        metrics.update(metric.cpu().item(), target.size(0))
-
-        # Rearrange the outputs
-        test_pred = output.data.cpu()
-        test_target = target.detach().cpu()
-        if test_target.shape[0] == batch["name"].shape[0] and test_target.shape[1] == 1:
-            if normalizer is not None:
-                test_preds += normalizer.denorm(test_pred).view(-1).tolist()
-                test_targets += normalizer.denorm(test_target).view(-1).tolist()
-            else:
-                test_preds += test_pred.view(-1).tolist()
-                test_targets += test_target.view(-1).tolist()
-
-        if test_target.shape[0] == batch["name"].shape[0] and test_target.shape[1] > 1:
-            if normalizer is not None:
-                test_preds += normalizer.denorm(test_pred).tolist()
-                test_targets += normalizer.denorm(test_target).tolist()
-            else:
-                test_preds += test_pred.tolist()
-                test_targets += test_target.view.tolist()
-
-        elif test_target.shape[0] == batch["nxyz"].shape[0]:
-            batch_ids = []
-            count = 0
-            num_bin = []
-            for i, val in enumerate(batch["num_atoms"].detach().cpu().numpy()):
-                count += val
-                num_bin.append(count)
-                if i == 0:
-                    change = list(np.arange(val))
-                else:
-                    adding_val = num_bin[i - 1]
-                    change = list(np.arange(val) + adding_val)
-                batch_ids.append(change)
-
-            if normalizer is not None:
-                if test_target.shape[1] == 1:
-                    test_preds += [
-                        normalizer.denorm(test_pred[i]).view(-1).tolist()
-                        for i in batch_ids
-                    ]
-                    test_targets += [
-                        normalizer.denorm(test_target[i]).view(-1).tolist()
-                        for i in batch_ids
-                    ]
-                else:
-                    test_preds += [
-                        normalizer.denorm(test_pred[i]).tolist() for i in batch_ids
-                    ]
-                    test_targets += [
-                        normalizer.denorm(test_target[i]).tolist() for i in batch_ids
-                    ]
-
-            else:
-                if test_target.shape[1] == 1:
-                    test_preds += [test_pred[i].view(-1).tolist() for i in batch_ids]
-                    test_targets += [
-                        test_target[i].view(-1).tolist() for i in batch_ids
-                    ]
-                else:
-                    test_preds += [test_pred[i].tolist() for i in batch_ids]
-                    test_targets += [test_target[i].tolist() for i in batch_ids]
-
-        test_ids += batch["name"].detach().tolist()
-
-    return test_preds, test_targets, test_ids, metrics.avg

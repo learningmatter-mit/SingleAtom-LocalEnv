@@ -11,19 +11,14 @@ def build_dataset(
     raw_data,
     prop_to_predict,
     cutoff=5.0,
-    site_prediction=True,
+    multifidelity=False,
     seed=1234,
 ) -> Dataset:
-    if site_prediction:
-        samples = [[id_, struct] for id_, struct in raw_data.items()]
-    else:
-        samples = [
-            [id_, data["structure"], data["target"]] for id_, data in raw_data.items()
-        ]
+    samples = [[id_, struct] for id_, struct in raw_data.items()]
     props = gen_props_from_file(
         samples=samples,
         prop_to_predict=prop_to_predict,
-        site_prediction=site_prediction,
+        multifidelity=multifidelity,
         seed=seed,
     )
     dataset = Dataset(props=props)
@@ -32,28 +27,30 @@ def build_dataset(
     return dataset
 
 
-def compute_prop(id_, crystal, target_val, prop_to_predict, site_prediction):
-    if site_prediction:
+def compute_prop(id_, crystal, prop_to_predict, multifidelity):
+    if multifidelity:
+        target = crystal.site_properties[prop_to_predict]
+        fidelity = crystal.site_properties["fidelity"]
+        if len(target) == 1:
+            target = np.array(target).reshape(-1, 1)
+    else:
         target = crystal.site_properties[prop_to_predict]
         if len(target) == 1:
             target = np.array(target).reshape(-1, 1)
-        site_prop = None
-    else:
-        site_prop = crystal.site_properties["site_prop"]
-        target = np.array([target_val]).reshape(-1, 1)
+        fidelity = None
     structure = AA.get_atoms(crystal)
     n = np.asarray(structure.numbers).reshape(-1, 1)
     xyz = np.asarray(structure.positions)
     nxyz = np.concatenate((n, xyz), axis=1)
     lattice = structure.cell[:]
 
-    return id_, nxyz, lattice, site_prop, target
+    return id_, nxyz, lattice, fidelity, target
 
 
 def gen_props_from_file(
     samples,
     prop_to_predict,
-    site_prediction=True,
+    multifidelity=True,
     seed=1234,
 ):
     """Summary
@@ -78,22 +75,13 @@ def gen_props_from_file(
     site_prop_list = []
     target = []
     for idx in tqdm(range(len(samples)), position=0, leave=True):
-        if site_prediction:
-            id_, nxyz, lattice, site_prop, target_val = compute_prop(
-                samples[idx][0],
-                samples[idx][1],
-                None,
-                prop_to_predict,
-                site_prediction,
-            )
-        else:
-            id_, nxyz, lattice, site_prop, target_val = compute_prop(
-                samples[idx][0],
-                samples[idx][1],
-                samples[idx][2],
-                prop_to_predict,
-                site_prediction,
-            )
+        id_, nxyz, lattice, site_prop, target_val = compute_prop(
+            samples[idx][0],
+            samples[idx][1],
+            prop_to_predict,
+            multifidelity,
+        )
+
         name_list.append(id_)
         nxyz_list.append(nxyz)
         lattice_list.append(lattice)
@@ -102,9 +90,9 @@ def gen_props_from_file(
 
     props["nxyz"] = nxyz_list
     props["lattice"] = lattice_list
-    props["site_prop"] = site_prop_list
+    props["fidelity"] = site_prop_list
     props["name"] = name_list
-    props["target"] = target
+    props[prop_to_predict] = target
 
     return props
 

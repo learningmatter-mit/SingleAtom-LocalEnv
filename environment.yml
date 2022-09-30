@@ -311,3 +311,5 @@ dependencies:
     - torch-scatter==2.0.9
     - webencodings==0.5.1
     - widgetsnbextension==3.6.0
+    - bokeh==2.4.3
+    - selenium==4.4.3
