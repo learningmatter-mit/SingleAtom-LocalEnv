@@ -10,21 +10,30 @@
         ],
         "feat_dim": 128,
         "activation": "swish",
-        "activation_f": "softplus",
+        "activation_f": "ReLU",
         "n_rbf": 20,
         "cutoff": 6.5,
         "num_conv": 3,
-        "atom_fea_len": 128,
-        "h_fea_len": 210,
-        "n_h": 4,
-        "conv_dropout": 0.0,
-        "readout_dropout": 0.03,
+        "atom_fea_len": {
+            "target": 16,
+            "fidelity": 128
+        },
+        "h_fea_len": {
+            "target": 64,
+            "fidelity": 210
+        },
+        "n_h": {
+            "target": 2,
+            "fidelity": 3
+        },
+        "conv_dropout": 0.05,
+        "readout_dropout": 0.15,
         "fc_dropout": 0.05,
         "n_outputs": 2,
         "n_fidelity": 3,
         "loss_coeff": {
             "target": 1.2,
-            "fidelity": 0.5
+            "fidelity": 0.4
         }
     }
 }
