@@ -65,7 +65,6 @@ class Painn(nn.Module):
         n_h = modelparams["n_h"]
         h_fea_len = modelparams["h_fea_len"]
         n_outputs = modelparams["n_outputs"]
-        self.force_positive = kwargs["spectra"]
 
         if self.multifidelity:
             # TODO: This now be the same readout block for both fidelity and target
@@ -94,7 +93,6 @@ class Painn(nn.Module):
                 activation=activation_f,
                 n_outputs=n_fidelity,
                 dropout=fc_dropout,
-                force_positive=self.force_positive,
             )
             self.fn_target = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim[self.output_keys[0]]
@@ -104,7 +102,6 @@ class Painn(nn.Module):
                 activation=activation_f,
                 n_outputs=n_outputs,
                 dropout=fc_dropout,
-                force_positive=self.force_positive,
             )
         else:
             self.readout_block = ReadoutBlock(
@@ -123,7 +120,6 @@ class Painn(nn.Module):
                 activation=activation_f,
                 n_outputs=n_outputs,
                 dropout=fc_dropout,
-                force_positive=self.force_positive,
             )
 
         self.cutoff = cutoff

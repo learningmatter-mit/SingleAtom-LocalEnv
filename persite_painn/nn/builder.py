@@ -111,7 +111,6 @@ def load_model(params_path, model_path, model_type="Painn"):
     model = get_model(
         params,
         model_type=model_type,
-        spectra=details["spectra"],
         multifidelity=details["multifidelity"],
     )
     best_checkpoint = torch.load(model_path)

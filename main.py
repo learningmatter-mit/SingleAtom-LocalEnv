@@ -98,10 +98,12 @@ def main(args):
         except ValueError:
             print("Path to data should be given --data")
         else:
+            # TODO add cancat for multitask
             dataset = build_dataset(
                 raw_data=data,
                 prop_to_predict=modelparams["output_keys"][0],
                 cutoff=modelparams["cutoff"],
+                multitask=details["multitask"],
                 multifidelity=details["multifidelity"],
                 seed=args.seed,
             )
@@ -114,36 +116,32 @@ def main(args):
         dataset, val_size=args.val_size, test_size=args.test_size, seed=args.seed
     )
     # Normalizer
-    if not details["spectra"]:
-        normalizer = {}
-        targs = []
+    normalizer = {}
+    targs = []
+    for batch in train_set:
+        targs.append(batch[modelparams["output_keys"][0]])
+    targs = torch.concat(targs).view(-1)
+    nan_mask_targs = torch.isnan(targs)
+    filtered_targs = targs[~nan_mask_targs]
+
+    normalizer[modelparams["output_keys"][0]] = Normalizer(filtered_targs)
+
+    if details["multifidelity"]:
+        fidelity = []
         for batch in train_set:
-            targs.append(batch[modelparams["output_keys"][0]])
-        targs = torch.concat(targs).view(-1)
-        nan_mask_targs = torch.isnan(targs)
-        filtered_targs = targs[~nan_mask_targs]
-
-        normalizer[modelparams["output_keys"][0]] = Normalizer(filtered_targs)
-
-        if details["multifidelity"]:
-            fidelity = []
-            for batch in train_set:
-                fidelity.append(batch["fidelity"])
-            fidelity = torch.concat(fidelity).view(-1)
-            nan_mask = torch.isnan(fidelity)
-            filtered_fidelity = fidelity[~nan_mask]
-            normalizer_fidelity = Normalizer(filtered_fidelity)
-            # modelparams.update({"means": {"fidelity": normalizer_fidelity.mean}})
-            # modelparams.update({"stddevs": {"fidelity": normalizer_fidelity.std}})
-            normalizer["fidelity"] = normalizer_fidelity
-    else:
-        normalizer = None
+            fidelity.append(batch["fidelity"])
+        fidelity = torch.concat(fidelity).view(-1)
+        nan_mask = torch.isnan(fidelity)
+        filtered_fidelity = fidelity[~nan_mask]
+        normalizer_fidelity = Normalizer(filtered_fidelity)
+        # modelparams.update({"means": {"fidelity": normalizer_fidelity.mean}})
+        # modelparams.update({"stddevs": {"fidelity": normalizer_fidelity.std}})
+        normalizer["fidelity"] = normalizer_fidelity
 
     # Get model
     model = get_model(
         modelparams,
         model_type=model_type,
-        spectra=details["spectra"],
         multifidelity=details["multifidelity"],
     )
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
@@ -159,7 +157,7 @@ def main(args):
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
-            if args.start_epoch != 0 and normalizer is not None:
+            if args.start_epoch != 0:
                 print("=> loading checkpoint '{}'".format(args.resume))
                 checkpoint = torch.load(args.resume)
                 best_metric = checkpoint["best_metric"]
@@ -167,27 +165,15 @@ def main(args):
                 model.load_state_dict(checkpoint["state_dict"])
                 optimizer.load_state_dict(checkpoint["optimizer"])
                 args.start_epoch = checkpoint["epoch"]
-            elif args.start_epoch == 0 and normalizer is not None:
+                normalizer.load_state_dict(checkpoint["normalizer"])
+            elif args.start_epoch == 0:
                 checkpoint = torch.load(args.resume)
                 best_metric = checkpoint["best_metric"]
                 best_loss = checkpoint["best_loss"]
                 model.load_state_dict(checkpoint["state_dict"])
                 optimizer.load_state_dict(checkpoint["optimizer"])
                 normalizer.load_state_dict(checkpoint["normalizer"])
-                normalizer.load_state_dict(checkpoint["normalizer"])
-            elif args.start_epoch == 0 and normalizer is None:
-                checkpoint = torch.load(args.resume)
-                best_metric = checkpoint["best_metric"]
-                best_loss = checkpoint["best_loss"]
-                model.load_state_dict(checkpoint["state_dict"])
-                optimizer.load_state_dict(checkpoint["optimizer"])
-                args.start_epoch = checkpoint["epoch"]
-            elif args.start_epoch == 0 and normalizer is None:
-                checkpoint = torch.load(args.resume)
-                best_metric = checkpoint["best_metric"]
-                best_loss = checkpoint["best_loss"]
-                model.load_state_dict(checkpoint["state_dict"])
-                optimizer.load_state_dict(checkpoint["optimizer"])
+
             print(
                 "=> loaded checkpoint '{}' (epoch {})".format(
                     args.resume, checkpoint["epoch"]
@@ -215,7 +201,6 @@ def main(args):
             operation=sid_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            spectra=details["spectra"],
         )
         # loss_fn = sid_loss
     elif args.loss_fn == "MSE":
@@ -224,7 +209,6 @@ def main(args):
             operation=mse_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            spectra=details["spectra"],
         )
         # loss_fn = mse_loss
     else:
@@ -236,7 +220,6 @@ def main(args):
             operation=stmse_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            spectra=details["spectra"],
         )
         # metric_fn = stmse_loss
     elif args.metric_fn == "MAE":
@@ -245,7 +228,6 @@ def main(args):
             operation=mae_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            spectra=details["spectra"],
         )
         # metric_fn = mae_loss
     elif args.metric_fn == "SIS":
@@ -254,7 +236,6 @@ def main(args):
             operation=sis_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            spectra=details["spectra"],
         )
         # metric_fn = sis_loss
     else:
@@ -340,7 +321,6 @@ def main(args):
         metric_fn=metric_fn,
         device="cpu",
         normalizer=normalizer,
-        spectra=details["spectra"],
         multifidelity=details["multifidelity"],
     )
     test_ids = []
@@ -361,8 +341,8 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
     # TODO CUDA Settings confusing
     if args.device == "cuda":
-        os.environ["CUDA_LAUNCH_BLOCKING"] = str(1)
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        # os.environ["CUDA_LAUNCH_BLOCKING"] = str(1)
+        # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
         assert torch.cuda.is_available(), "cuda is not available"
 

@@ -78,7 +78,6 @@ def get_loss_metric_fn(
     operation,
     correspondence_keys=None,
     normalizer=None,
-    spectra=False,
     persite=False,
 ):
     """
@@ -133,12 +132,11 @@ def get_loss_metric_fn(
 
             pred = results[key].view(targ.shape)
 
-            if not spectra:
-                # select only properties which are given
-                valid_idx = torch.bitwise_not(torch.isnan(targ))
+            # select only properties which are given
+            valid_idx = torch.bitwise_not(torch.isnan(targ))
 
-                targ = targ[valid_idx]
-                pred = pred[valid_idx]
+            targ = targ[valid_idx]
+            pred = pred[valid_idx]
 
             if len(targ) != 0:
                 diff = operation(prediction=pred, target=targ)

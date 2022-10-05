@@ -11,6 +11,7 @@ def build_dataset(
     raw_data,
     prop_to_predict,
     cutoff=5.0,
+    multitask=False,
     multifidelity=False,
     seed=1234,
 ) -> Dataset:

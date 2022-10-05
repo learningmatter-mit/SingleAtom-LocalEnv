@@ -341,7 +341,6 @@ class FullyConnected(nn.Module):
         activation,
         n_outputs,
         dropout,
-        force_positive=False,
     ):
         super().__init__()
         self.conv_to_fc = Dense(
@@ -363,13 +362,8 @@ class FullyConnected(nn.Module):
                 for _ in range(n_h - 1)
             ]
         )
-        self.force_positive = force_positive
 
-        if self.force_positive:
-            self.fc_out = nn.Linear(h_fea_len, n_outputs)
-            self.fc_out_act = nn_exp()
-        else:
-            self.fc_out = nn.Linear(h_fea_len, n_outputs)
+        self.fc_out = nn.Linear(h_fea_len, n_outputs)
 
     def forward(self, val):
         val = self.conv_to_fc(val)
@@ -377,65 +371,5 @@ class FullyConnected(nn.Module):
             for fc in self.fcs:
                 val = fc(val)
         out = self.fc_out(val)
-        if self.force_positive:
-            out = self.fc_out_act(out)
 
         return out
-
-
-class SumPool(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def pooling(self, batch, atomwise_output, out_keys=None, mean=False):
-
-        N = batch["num_atoms"].detach().cpu().tolist()
-        if isinstance(N, int):
-            N = [N]
-        results = {}
-        if out_keys is None:
-            out_keys = list(atomwise_output.keys())
-
-        for key, val in atomwise_output.items():
-            if key not in out_keys:
-                continue
-
-            mol_idx = (
-                torch.arange(len(N))
-                .repeat_interleave(torch.LongTensor(N))
-                .to(val.device)
-            )
-            dim_size = mol_idx.max() + 1
-
-            if val.reshape(-1).shape[0] == mol_idx.shape[0]:
-                use_val = val.reshape(-1)
-
-            # summed atom features
-            elif val.shape[0] == mol_idx.shape[0]:
-                use_val = val
-
-            else:
-                raise Exception(
-                    (
-                        "Don't know how to handle val shape "
-                        "{} for key {}".format(val.shape, key)
-                    )
-                )
-
-            pooled_result = scatter(
-                use_val, mol_idx.reshape(-1, 1), dim=0, dim_size=dim_size, reduce="sum"
-            )
-            if mean:
-                pooled_result = pooled_result / torch.Tensor(N).to(val.device)
-
-            results[key] = pooled_result
-
-        return results
-
-    def forward(self, batch, atomwise_output, out_keys=None):
-        results = self.pooling(
-            batch=batch,
-            atomwise_output=atomwise_output,
-            out_keys=out_keys,
-        )
-        return results

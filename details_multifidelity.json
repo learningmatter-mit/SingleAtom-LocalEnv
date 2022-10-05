@@ -1,7 +1,7 @@
 {
     "modeltype": "PainnMultifidelity",
     "details": {
-        "spectra": false,
+        "multitask": false,
         "multifidelity": true
     },
     "modelparams": {
