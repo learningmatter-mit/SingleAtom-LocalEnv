@@ -83,12 +83,7 @@ def test_model(
                         change = list(np.arange(val) + adding_val)
                     batch_ids.append(change)
 
-                if test_target.shape[1] == 1:
-                    test_preds += [test_pred[i].view(-1).tolist() for i in batch_ids]
-                    test_targets += [
-                        test_target[i].view(-1).tolist() for i in batch_ids
-                    ]
-                elif spectra:
+                if spectra:
                     test_preds += [test_pred[i].tolist() for i in batch_ids]
                     test_targets += [test_target[i].tolist() for i in batch_ids]
                     metric_bin += [metric[i].tolist() for i in batch_ids]
