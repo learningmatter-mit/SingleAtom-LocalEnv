@@ -7,7 +7,7 @@ Description
 1. Clone the repository
 
 ```bash
-git clone git@github.mit.edu:hojechun/per-site_PaiNN.git
+git clone git@github.mit.edu:MLMat/per-site_PaiNN.git
 ```
 
 2. Conda environments
@@ -50,31 +50,37 @@ python main.py --data data_raw/data.pkl --cache data_cache/data_cache --details 
 {
   "modeltype": "Painn",
   "details": {
-    "spectra": false,
+    "multitask": false,
     "multifidelity": false
   },
   "modelparams": {
-    "output_keys": ["d_p"],
+    "output_keys": ["target"],
     "feat_dim": 128,
     "activation": "swish",
     "activation_f": "softplus",
     "n_rbf": 20,
     "cutoff": 6.5,
     "num_conv": 4,
-    "atom_fea_len": 128,
-    "h_fea_len": 256,
-    "n_h": 4,
-    "n_outputs": 1,
+    "atom_fea_len": {
+      "target": 16
+    },
+    "h_fea_len": {
+      "target": 64
+    },
+    "n_h": {
+      "target": 2
+    },
     "conv_dropout": 0.0,
-    "readout_dropout": 0.05,
-    "fc_dropout": 0.05
+    "readout_dropout": 0.03,
+    "fc_dropout": 0.05,
+    "n_outputs": 3
   }
 }
 ```
 
 - Modeltype: Type of model
 - Details: \
-  `spectra`: whether you predict spectra (To impose the ouptuts to be positive if true)\
+  `multitask`: whether you predict with colearning\
   `multifidelity`: whether you use multi-fidelity stretagy (To add atomwise properties)
 - Modelparams:\
   `feat_dim`: number of features in PaiNN\
