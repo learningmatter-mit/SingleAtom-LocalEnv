@@ -27,7 +27,16 @@ pip install .
 # Copy nff/utils/table_data to the installed directory in conda envs python packages
 ```
 
-4. Install
+4. Install Wandb
+
+   Create an account [here](https://wandb.ai/home) and install the Python package:
+
+```bash
+pip install wandb
+wandb login
+```
+
+5. Install
 
 ```bash
 # Go to per-site_painn directory
@@ -44,57 +53,4 @@ run `main.py` with settings (e.g., `details.json` below)\
 python main.py --data data_raw/data.pkl --cache data_cache/data_cache --details details.json --savedir results
 ```
 
-- example `details.json`
-
-```json
-{
-  "modeltype": "Painn",
-  "details": {
-    "multitask": false,
-    "multifidelity": false
-  },
-  "modelparams": {
-    "output_keys": ["target"],
-    "feat_dim": 128,
-    "activation": "swish",
-    "activation_f": "softplus",
-    "n_rbf": 20,
-    "cutoff": 6.5,
-    "num_conv": 4,
-    "atom_fea_len": {
-      "target": 16
-    },
-    "h_fea_len": {
-      "target": 64
-    },
-    "n_h": {
-      "target": 2
-    },
-    "conv_dropout": 0.0,
-    "readout_dropout": 0.03,
-    "fc_dropout": 0.05,
-    "n_outputs": 3
-  }
-}
-```
-
-- Modeltype: Type of model
-- Details: \
-  `multitask`: whether you predict with colearning\
-  `multifidelity`: whether you use multi-fidelity stretagy (To add atomwise properties)
-- Modelparams:\
-  `feat_dim`: number of features in PaiNN\
-  `activation`: activation function in PaiNN\
-  `activation_f`: activation function in FullyConnected NN (FFNN)\
-  `n_rbf`: number of rbf\
-  `cutoff`: cutoff radius\
-  `num_conv`: number of convolution (message & update blocks)\
-  `output_keys`: target property to predict\
-  `atom_fea_len`: output_atomwise feature lenghts after the readoutblock\
-  `h_fea_len`: number of nodes in FFNN\
-  `n_h`: number of hidden layers\
-  `n_outputs`: number of predictions (for spectra number of mesh)\
-  `conv_dropout`: dropout ratio in PaiNN\
-  `readout_droupout`: dropout ratio in readoutblock\
-  `fc_dropout`: dropout ratio in FFNN\
-  `n_fidelity`: number of adding values for node properties
+- example `*.json`

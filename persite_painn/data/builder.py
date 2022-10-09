@@ -9,16 +9,13 @@ from .dataset import Dataset
 
 def build_dataset(
     raw_data,
-    prop_to_predict,
     cutoff=5.0,
-    multitask=False,
     multifidelity=False,
     seed=1234,
 ) -> Dataset:
     samples = [[id_, struct] for id_, struct in raw_data.items()]
     props = gen_props_from_file(
         samples=samples,
-        prop_to_predict=prop_to_predict,
         multifidelity=multifidelity,
         seed=seed,
     )
@@ -28,14 +25,14 @@ def build_dataset(
     return dataset
 
 
-def compute_prop(id_, crystal, prop_to_predict, multifidelity):
+def compute_prop(id_, crystal, multifidelity):
     if multifidelity:
-        target = crystal.site_properties[prop_to_predict]
+        target = crystal.site_properties["target"]
         fidelity = crystal.site_properties["fidelity"]
         if len(target) == 1:
             target = np.array(target).reshape(-1, 1)
     else:
-        target = crystal.site_properties[prop_to_predict]
+        target = crystal.site_properties["target"]
         if len(target) == 1:
             target = np.array(target).reshape(-1, 1)
         fidelity = None
@@ -45,12 +42,11 @@ def compute_prop(id_, crystal, prop_to_predict, multifidelity):
     nxyz = np.concatenate((n, xyz), axis=1)
     lattice = structure.cell[:]
 
-    return id_, nxyz, lattice, fidelity, target
+    return id_, nxyz, lattice, target, fidelity
 
 
 def gen_props_from_file(
     samples,
-    prop_to_predict,
     multifidelity=True,
     seed=1234,
 ):
@@ -73,27 +69,26 @@ def gen_props_from_file(
     name_list = []
     nxyz_list = []
     lattice_list = []
-    site_prop_list = []
-    target = []
+    fidelity_list = []
+    target_list = []
     for idx in tqdm(range(len(samples)), position=0, leave=True):
-        id_, nxyz, lattice, site_prop, target_val = compute_prop(
+        id_, nxyz, lattice, target, fidelity = compute_prop(
             samples[idx][0],
             samples[idx][1],
-            prop_to_predict,
             multifidelity,
         )
 
         name_list.append(id_)
         nxyz_list.append(nxyz)
         lattice_list.append(lattice)
-        site_prop_list.append(site_prop)
-        target.append(target_val)
+        target_list.append(target)
+        fidelity_list.append(fidelity)
 
     props["nxyz"] = nxyz_list
     props["lattice"] = lattice_list
-    props["fidelity"] = site_prop_list
     props["name"] = name_list
-    props[prop_to_predict] = target
+    props["target"] = target_list
+    props["fidelity"] = fidelity_list
 
     return props
 

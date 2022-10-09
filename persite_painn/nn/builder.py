@@ -22,7 +22,6 @@ PARAMS_TYPE = {
         "n_h": Dict,
         "h_fea_len": Dict,
         "n_outputs": int,
-        "output_keys": list,
         "site_prediction": bool,
     },
     "PainnMultifidelity": {
@@ -36,7 +35,6 @@ PARAMS_TYPE = {
         "n_h": Dict,
         "h_fea_len": Dict,
         "n_outputs": int,
-        "output_keys": list,
         "site_prediction": bool,
     },
 }
@@ -88,11 +86,15 @@ def load_params(param_path):
     with open(param_path, "r") as f:
         info = json.load(f)
 
+    wandb_config = info["wandb"]
     details = info["details"]
     params = info["modelparams"]
-    model_type = info["modeltype"]
+    if details["multifidelity"]:
+        model_type = "PainnMultifidelity"
+    else:
+        model_type = "Painn"
 
-    return details, params, model_type
+    return wandb_config, details, params, model_type
 
 
 def load_model(params_path, model_path, model_type="Painn"):
@@ -107,7 +109,7 @@ def load_model(params_path, model_path, model_type="Painn"):
     Returns:
             model, best_checkoint
     """
-    details, params, model_type = load_params(params_path)
+    _, details, params, model_type = load_params(params_path)
     model = get_model(
         params,
         model_type=model_type,

@@ -12,6 +12,7 @@ data_cache/*
 !data_cache/.gitkeep
 notebooks/*
 !notebooks/.gitkeep
+wandb
 
 # C extensions
 *.so

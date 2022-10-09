@@ -2,6 +2,7 @@ import shutil
 import sys
 import time
 from typing import Dict
+import wandb
 
 import torch
 from persite_painn.utils.cuda import batch_to
@@ -36,7 +37,6 @@ class Trainer:
         self,
         model_path,
         model,
-        output_key,
         loss_fn,
         metric_fn,
         optimizer,
@@ -53,7 +53,6 @@ class Trainer:
         self.scheduler = scheduler
         self.train_loader = train_loader
         self.validation_loader = validation_loader
-        self.output_key = output_key
         self.normalizer = normalizer
 
     def train(
@@ -87,7 +86,7 @@ class Trainer:
                 batch = batch_to(batch, device)
                 # measure data loading time
                 data_time.update(time.time() - end)
-                target = batch[self.output_key]
+                target = batch["target"]
 
                 output = self.model(batch)
 
@@ -130,6 +129,16 @@ class Trainer:
             val_losses.append(val_loss)
             val_metrics.append(val_metric)
 
+            # wandb
+            wandb.log(
+                {
+                    "loss": losses.avg,
+                    "train_acc": metrics.avg,
+                    "val_loss": val_loss,
+                    "val_acc": val_metric,
+                },
+                step=epoch,
+            )
             if val_loss != val_loss:
                 print("Exit due to NaN")
                 sys.exit(1)
@@ -203,7 +212,7 @@ class Trainer:
         with torch.no_grad():
             for val_batch in self.validation_loader:
                 val_batch = batch_to(val_batch, device)
-                target = val_batch[self.output_key]
+                target = val_batch["target"]
 
                 output = self.model(val_batch)
 

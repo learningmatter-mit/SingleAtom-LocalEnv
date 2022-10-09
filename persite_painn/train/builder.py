@@ -7,6 +7,8 @@ from torch.optim.lr_scheduler import (
 )
 from torch.optim import SGD, Adam, Adadelta, AdamW, NAdam, RAdam
 import torch
+from persite_painn.train.loss import mse_operation
+from persite_painn.train.metric import mae_operation
 
 
 def get_optimizer(
@@ -73,7 +75,7 @@ def get_scheduler(sched, optimizer, epochs, lr_update_rate=30, lr_milestones=[10
     return scheduler
 
 
-def get_loss_metric_fn(
+def build_loss_metric_fn(
     loss_coef,
     operation,
     correspondence_keys=None,
@@ -147,5 +149,32 @@ def get_loss_metric_fn(
                 loss += err_sq
 
         return loss
+
+    return loss_fn
+
+
+def get_loss_metric_fn(
+    loss_coeff,
+    correspondence_keys,
+    operation_name,
+    normalizer,
+    persite=False,
+):
+    if operation_name == "MSE":
+        loss_fn = build_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=mse_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            persite=persite,
+        )
+    elif operation_name == "MAE":
+        loss_fn = build_loss_metric_fn(
+            loss_coef=loss_coeff,
+            operation=mae_operation,
+            correspondence_keys=correspondence_keys,
+            normalizer=normalizer,
+            persite=persite,
+        )
 
     return loss_fn

@@ -27,13 +27,10 @@ class Painn(nn.Module):
         cutoff = modelparams["cutoff"]
         num_conv = modelparams["num_conv"]
         # TODO make sure receiving list is the best
-        self.output_keys = modelparams["output_keys"]
         learnable_k = modelparams.get("learnable_k", False)
         conv_dropout = modelparams.get("conv_dropout", 0)
         readout_dropout = modelparams.get("readout_dropout", 0)
         fc_dropout = modelparams.get("fc_dropout", 0)
-        means = modelparams.get("means")
-        stddevs = modelparams.get("stddevs")
 
         self.multifidelity = kwargs["multifidelity"]
         output_atom_fea_dim = modelparams["atom_fea_len"]
@@ -70,13 +67,10 @@ class Painn(nn.Module):
             # TODO: This now be the same readout block for both fidelity and target
             self.readout_block_target = ReadoutBlock(
                 feat_dim=feat_dim,
-                output_atom_fea=output_atom_fea_dim[self.output_keys[0]],
-                output_keys=self.output_keys,
+                output_atom_fea=output_atom_fea_dim["target"],
+                output_keys=["target"],
                 activation=activation,
                 dropout=readout_dropout,
-                means=means,
-                stddevs=stddevs,
-                scale=True,
             )
             self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
@@ -95,10 +89,9 @@ class Painn(nn.Module):
                 dropout=fc_dropout,
             )
             self.fn_target = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim[self.output_keys[0]]
-                + n_fidelity,
-                h_fea_len=h_fea_len[self.output_keys[0]],
-                n_h=n_h[self.output_keys[0]],
+                output_atom_fea_dim=output_atom_fea_dim["target"] + n_fidelity,
+                h_fea_len=h_fea_len["target"],
+                n_h=n_h["target"],
                 activation=activation_f,
                 n_outputs=n_outputs,
                 dropout=fc_dropout,
@@ -106,17 +99,15 @@ class Painn(nn.Module):
         else:
             self.readout_block = ReadoutBlock(
                 feat_dim=feat_dim,
-                output_atom_fea=output_atom_fea_dim[self.output_keys[0]],
-                output_keys=self.output_keys,
+                output_atom_fea=output_atom_fea_dim["target"],
+                output_keys=["target"],
                 activation=activation,
                 dropout=readout_dropout,
-                means=means,
-                stddevs=stddevs,
             )
             self.fn = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim[self.output_keys[0]],
-                h_fea_len=h_fea_len[self.output_keys[0]],
-                n_h=n_h[self.output_keys[0]],
+                output_atom_fea_dim=output_atom_fea_dim["target"],
+                h_fea_len=h_fea_len["target"],
+                n_h=n_h["target"],
                 activation=activation_f,
                 n_outputs=n_outputs,
                 dropout=fc_dropout,
@@ -147,7 +138,6 @@ class Painn(nn.Module):
         r_ij, nbrs = get_rij(xyz=xyz, batch=batch, nbrs=nbrs, cutoff=self.cutoff)
 
         s_i, v_i = self.embed_block(z_numbers, nbrs=nbrs, r_ij=r_ij)
-        # results = {}
 
         for i, message_block in enumerate(self.message_blocks):
             update_block = self.update_blocks[i]
@@ -162,10 +152,6 @@ class Painn(nn.Module):
 
             s_i = s_i + ds_update
             v_i = v_i + dv_update
-
-        # new_results = {f"self.output_keys": s_i}self.readout_block(s_i=s_i)
-
-        # results[self.output_keys[0]] = s_i
 
         return s_i, xyz, r_ij, nbrs
 

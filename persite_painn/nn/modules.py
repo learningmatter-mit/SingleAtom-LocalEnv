@@ -292,14 +292,13 @@ class ReadoutBlock(nn.Module):
         dropout,
         means=None,
         stddevs=None,
-        scale=True,
+        scale=False,
     ):
         super().__init__()
 
         self.readoutdict = nn.ModuleDict(
             {
                 key: nn.Sequential(
-                    nn.BatchNorm1d(feat_dim),
                     Dense(
                         in_features=feat_dim,
                         out_features=output_atom_fea,

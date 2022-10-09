@@ -6,7 +6,6 @@ from persite_painn.utils import batch_to, inference
 
 def test_model(
     model,
-    output_key,
     test_loader,
     metric_fn,
     device,
@@ -17,7 +16,6 @@ def test_model(
     test the model performances
     Args:
         model: Model,
-        output_key: str,
         test_loader: DataLoader,
         metric_fn: metric function,
         device: "cpu" or "cuda",
@@ -35,9 +33,9 @@ def test_model(
     with torch.no_grad():
         for batch in test_loader:
             batch = batch_to(batch, device)
-            target = batch[output_key]
+            target = batch["target"]
             # Compute output
-            output = inference(model, batch, output_key, normalizer, device)
+            output = inference(model, batch, "target", normalizer, device)
             if device == "cpu":
                 metric_output = model(batch, inference=True)
             else:
