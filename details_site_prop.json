@@ -24,6 +24,7 @@
         "n_rbf": 20,
         "cutoff": 6.5,
         "num_conv": 3,
+        "conv_dropout": 0.05,
         "atom_fea_len": {
             "target": 128
         },
@@ -33,10 +34,15 @@
         "n_h": {
             "target": 4
         },
-        "conv_dropout": 0.05,
-        "readout_dropout": 0.05,
-        "fc_dropout": 0.05,
-        "n_outputs": 1,
+        "readout_dropout": {
+            "target": 0.05
+        },
+        "fc_dropout": {
+            "target": 0.05
+        },
+        "n_outputs": {
+            "target": 1
+        },
         "loss_coeff": {
             "target": 1.0
         }

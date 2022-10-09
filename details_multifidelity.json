@@ -1,7 +1,7 @@
 {
     "wandb": {
         "project": "per-site learning",
-        "name": "perov-221008"
+        "name": "perov-221009-multifidelity"
     },
     "details": {
         "multifidelity": true,
@@ -16,7 +16,7 @@
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
-        "optim": "AdamW",
+        "optim": "Adam",
         "lr": 0.0005,
         "weight_decay": 0.0,
         "sched": "reduce_on_plateau",
@@ -25,13 +25,15 @@
     },
     "modelparams": {
         "feat_dim": 64,
-        "activation": "learnable_swish",
-        "activation_f": "swish",
+        "activation": "swish",
+        "activation_f": "ReLU",
         "n_rbf": 20,
         "cutoff": 6.5,
         "num_conv": 3,
+        "learnable_k": true,
+        "conv_dropout": 0.05,
         "atom_fea_len": {
-            "target": 8,
+            "target": 16,
             "fidelity": 128
         },
         "h_fea_len": {
@@ -39,14 +41,21 @@
             "fidelity": 256
         },
         "n_h": {
-            "target": 3,
+            "target": 2,
             "fidelity": 4
         },
-        "conv_dropout": 0.05,
-        "readout_dropout": 0.05,
-        "fc_dropout": 0.05,
-        "n_outputs": 2,
-        "n_fidelity": 3,
+        "readout_dropout": {
+            "target": 0.05,
+            "fidelity": 0.20
+        },
+        "fc_dropout": {
+            "target": 0.05,
+            "fidelity": 0.20
+        },
+        "n_outputs": {
+            "target": 2,
+            "fidelity": 3
+        },
         "loss_coeff": {
             "target": 1.0,
             "fidelity": 1.0

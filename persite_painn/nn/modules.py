@@ -3,7 +3,6 @@ from persite_painn.nn.layers import to_module, CosineEnvelope, Dense, PainnRadia
 
 from persite_painn.utils.scatter import scatter_add
 from torch import nn
-from torch_scatter import scatter
 
 EPS = 1e-8
 

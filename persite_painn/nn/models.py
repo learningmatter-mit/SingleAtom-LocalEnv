@@ -20,21 +20,15 @@ class Painn(nn.Module):
 
         super().__init__()
 
-        feat_dim = modelparams["feat_dim"]
-        activation = modelparams["activation"]
-        activation_f = modelparams["activation_f"]
         n_rbf = modelparams["n_rbf"]
         cutoff = modelparams["cutoff"]
         num_conv = modelparams["num_conv"]
-        # TODO make sure receiving list is the best
+        feat_dim = modelparams["feat_dim"]
+        activation = modelparams["activation"]
         learnable_k = modelparams.get("learnable_k", False)
         conv_dropout = modelparams.get("conv_dropout", 0)
         readout_dropout = modelparams.get("readout_dropout", 0)
         fc_dropout = modelparams.get("fc_dropout", 0)
-
-        self.multifidelity = kwargs["multifidelity"]
-        output_atom_fea_dim = modelparams["atom_fea_len"]
-        num_conv = modelparams["num_conv"]
 
         self.embed_block = EmbeddingBlock(feat_dim=feat_dim)
         self.message_blocks = nn.ModuleList(
@@ -59,42 +53,45 @@ class Painn(nn.Module):
             ]
         )
         # Fully connected layers
+        self.multifidelity = kwargs["multifidelity"]
+        output_atom_fea_dim = modelparams["atom_fea_len"]
         n_h = modelparams["n_h"]
         h_fea_len = modelparams["h_fea_len"]
         n_outputs = modelparams["n_outputs"]
+        activation_f = modelparams["activation_f"]
 
         if self.multifidelity:
-            # TODO: This now be the same readout block for both fidelity and target
             self.readout_block_target = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim["target"],
                 output_keys=["target"],
                 activation=activation,
-                dropout=readout_dropout,
+                dropout=readout_dropout["target"],
             )
             self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim["fidelity"],
                 output_keys=["fidelity"],
                 activation=activation,
-                dropout=readout_dropout,
+                dropout=readout_dropout["fidelity"],
             )
-            n_fidelity = modelparams["n_fidelity"]
+
             self.fn_fidelity = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim["fidelity"],
                 h_fea_len=h_fea_len["fidelity"],
                 n_h=n_h["fidelity"],
                 activation=activation_f,
-                n_outputs=n_fidelity,
-                dropout=fc_dropout,
+                n_outputs=n_outputs["fidelity"],
+                dropout=fc_dropout["fidelity"],
             )
             self.fn_target = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim["target"] + n_fidelity,
+                output_atom_fea_dim=output_atom_fea_dim["target"]
+                + n_outputs["fidelity"],
                 h_fea_len=h_fea_len["target"],
                 n_h=n_h["target"],
                 activation=activation_f,
-                n_outputs=n_outputs,
-                dropout=fc_dropout,
+                n_outputs=n_outputs["target"],
+                dropout=fc_dropout["target"],
             )
         else:
             self.readout_block = ReadoutBlock(
@@ -102,15 +99,15 @@ class Painn(nn.Module):
                 output_atom_fea=output_atom_fea_dim["target"],
                 output_keys=["target"],
                 activation=activation,
-                dropout=readout_dropout,
+                dropout=readout_dropout["target"],
             )
             self.fn = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim["target"],
                 h_fea_len=h_fea_len["target"],
                 n_h=n_h["target"],
                 activation=activation_f,
-                n_outputs=n_outputs,
-                dropout=fc_dropout,
+                n_outputs=n_outputs["target"],
+                dropout=fc_dropout["target"],
             )
 
         self.cutoff = cutoff

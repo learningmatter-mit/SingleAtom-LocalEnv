@@ -21,7 +21,7 @@ PARAMS_TYPE = {
         "atom_fea_len": Dict,
         "n_h": Dict,
         "h_fea_len": Dict,
-        "n_outputs": int,
+        "n_outputs": Dict,
         "site_prediction": bool,
     },
     "PainnMultifidelity": {
@@ -34,7 +34,7 @@ PARAMS_TYPE = {
         "atom_fea_len": Dict,
         "n_h": Dict,
         "h_fea_len": Dict,
-        "n_outputs": int,
+        "n_outputs": Dict,
         "site_prediction": bool,
     },
 }
