@@ -16,9 +16,9 @@
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
-        "optim": "Adam",
-        "lr": 0.0005,
-        "weight_decay": 0.0,
+        "optim": "AdamW",
+        "lr": 0.001,
+        "weight_decay": 0.001,
         "sched": "reduce_on_plateau",
         "val_size": 0.2,
         "test_size": 0.2
@@ -26,7 +26,7 @@
     "modelparams": {
         "feat_dim": 64,
         "activation": "swish",
-        "activation_f": "ReLU",
+        "activation_f": "softplus",
         "n_rbf": 20,
         "cutoff": 6.5,
         "num_conv": 3,
@@ -42,15 +42,15 @@
         },
         "n_h": {
             "target": 2,
-            "fidelity": 4
+            "fidelity": 3
         },
         "readout_dropout": {
             "target": 0.05,
-            "fidelity": 0.20
+            "fidelity": 0.15
         },
         "fc_dropout": {
             "target": 0.05,
-            "fidelity": 0.20
+            "fidelity": 0.15
         },
         "n_outputs": {
             "target": 2,
@@ -58,7 +58,7 @@
         },
         "loss_coeff": {
             "target": 1.0,
-            "fidelity": 1.0
+            "fidelity": 2.0
         }
     }
 }

@@ -28,7 +28,7 @@ def convert_site_prop(data, output_keys, fidelity_keys=None):
                         o_val += [np.nan]
                 else:
                     if key_o in list(site_prop.keys()):
-                        o_val += [np.abs(site_prop[key_o][i])]
+                        o_val += [site_prop[key_o][i]]
                     else:
                         o_val += [np.nan]
                 target.append(o_val)
@@ -51,7 +51,7 @@ def convert_site_prop(data, output_keys, fidelity_keys=None):
                             f_val += [E_val]
                     else:
                         if key_f in list(site_prop.keys()):
-                            f_val += [np.abs(site_prop[key_f][i])]
+                            f_val += [site_prop[key_f][i]]
                         else:
                             f_val += [np.nan]
                     fidelity.append(f_val)
