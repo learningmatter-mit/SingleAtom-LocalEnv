@@ -339,6 +339,10 @@ class FullyConnected(nn.Module):
         activation,
         n_outputs,
         dropout,
+        output_key=None,
+        means=None,
+        stddevs=None,
+        scale=False,
     ):
         super().__init__()
         self.conv_to_fc = Dense(
@@ -361,7 +365,16 @@ class FullyConnected(nn.Module):
             ]
         )
 
-        self.fc_out = nn.Linear(h_fea_len, n_outputs)
+        self.fc_out = Dense(
+            in_features=h_fea_len,
+            out_features=n_outputs,
+            bias=True,
+            dropout_rate=dropout,
+        )
+        self.scale = scale
+        self.key = output_key
+        if self.scale:
+            self.scale_shift = ScaleShift(means=means, stddevs=stddevs)
 
     def forward(self, val):
         val = self.conv_to_fc(val)
@@ -369,5 +382,7 @@ class FullyConnected(nn.Module):
             for fc in self.fcs:
                 val = fc(val)
         out = self.fc_out(val)
+        if self.scale:
+            out = self.scale_shift(out, self.key)
 
         return out

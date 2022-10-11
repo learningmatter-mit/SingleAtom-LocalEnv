@@ -29,6 +29,8 @@ class Painn(nn.Module):
         conv_dropout = modelparams.get("conv_dropout", 0)
         readout_dropout = modelparams.get("readout_dropout", 0)
         fc_dropout = modelparams.get("fc_dropout", 0)
+        means = modelparams.get("means")
+        stddevs = modelparams.get("stddves")
 
         self.embed_block = EmbeddingBlock(feat_dim=feat_dim)
         self.message_blocks = nn.ModuleList(
@@ -67,6 +69,7 @@ class Painn(nn.Module):
                 output_keys=["target"],
                 activation=activation,
                 dropout=readout_dropout["target"],
+                scale=True,
             )
             self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
@@ -83,6 +86,10 @@ class Painn(nn.Module):
                 activation=activation_f,
                 n_outputs=n_outputs["fidelity"],
                 dropout=fc_dropout["fidelity"],
+                output_key="fidelity",
+                scale=True,
+                means=means,
+                stddevs=stddevs,
             )
             self.fn_target = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim["target"]
@@ -92,6 +99,10 @@ class Painn(nn.Module):
                 activation=activation_f,
                 n_outputs=n_outputs["target"],
                 dropout=fc_dropout["target"],
+                output_key="target",
+                scale=True,
+                means=means,
+                stddevs=stddevs,
             )
         else:
             self.readout_block = ReadoutBlock(
@@ -108,6 +119,10 @@ class Painn(nn.Module):
                 activation=activation_f,
                 n_outputs=n_outputs["target"],
                 dropout=fc_dropout["target"],
+                output_key="target",
+                scale=True,
+                means=means,
+                stddevs=stddevs,
             )
 
         self.cutoff = cutoff

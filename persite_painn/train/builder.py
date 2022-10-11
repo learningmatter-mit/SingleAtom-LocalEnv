@@ -80,7 +80,6 @@ def build_loss_metric_fn(
     operation,
     correspondence_keys=None,
     normalizer=None,
-    persite=False,
 ):
     """
     Build a general  loss function.
@@ -142,10 +141,7 @@ def build_loss_metric_fn(
 
             if len(targ) != 0:
                 diff = operation(prediction=pred, target=targ)
-                if persite:
-                    err_sq = coef * diff
-                else:
-                    err_sq = coef * torch.mean(diff)
+                err_sq = coef * torch.mean(diff)
                 loss += err_sq
 
         return loss
@@ -158,7 +154,6 @@ def get_loss_metric_fn(
     correspondence_keys,
     operation_name,
     normalizer,
-    persite=False,
 ):
     if operation_name == "MSE":
         loss_fn = build_loss_metric_fn(
@@ -166,7 +161,6 @@ def get_loss_metric_fn(
             operation=mse_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            persite=persite,
         )
     elif operation_name == "MAE":
         loss_fn = build_loss_metric_fn(
@@ -174,7 +168,6 @@ def get_loss_metric_fn(
             operation=mae_operation,
             correspondence_keys=correspondence_keys,
             normalizer=normalizer,
-            persite=persite,
         )
 
     return loss_fn
