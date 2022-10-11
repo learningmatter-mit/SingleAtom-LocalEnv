@@ -43,21 +43,27 @@ def mae_loss(
     return torch.mean(torch.abs(flattened_pred[~nan_mask] - flattened_targ[~nan_mask]))
 
 
-def mae_operation(
-    prediction,
-    target,
-):
-    """
-    Computes the mean absolute error between prediction and target
+# def mae_operation(
+#     prediction,
+#     target,
+# ):
+#     """
+#     Computes the mean absolute error between prediction and target
 
-    Parameters
-    ----------
+#     Parameters
+#     ----------
 
-    prediction: torch.Tensor (N, 1)
-    target: torch.Tensor (N, 1)
-    """
-    flattened_pred = prediction.view(1, -1)
-    flattened_targ = target.view(1, -1)
-    assert flattened_pred.shape[0] == flattened_targ.shape[0]
+#     prediction: torch.Tensor (N, 1)
+#     target: torch.Tensor (N, 1)
+#     """
+#     flattened_pred = prediction.view(1, -1)
+#     flattened_targ = target.view(1, -1)
+#     assert flattened_pred.shape[0] == flattened_targ.shape[0]
 
-    return torch.abs(flattened_pred - flattened_targ)
+#     return torch.abs(flattened_pred - flattened_targ)
+
+
+def mae_operation(prediction, target):
+    targ = target.to(torch.float)
+    diff = abs(targ - prediction)
+    return diff

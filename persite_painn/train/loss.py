@@ -91,15 +91,29 @@ def mse_loss(
     return loss
 
 
-def mse_operation(
-    prediction: torch.Tensor,
-    target: torch.Tensor,
-) -> torch.Tensor:
-    flattened_pred = prediction.view(1, -1)
-    flattened_targ = target.view(1, -1)
-    assert flattened_pred.shape[0] == flattened_targ.shape[0]
-    # nan_mask = torch.isnan(flattened_targ)
-    # nan_mask = nan_mask.to(target.device)
-    loss = (flattened_pred - flattened_targ) ** 2
+# def mse_operation(
+#     prediction: torch.Tensor,
+#     target: torch.Tensor,
+# ) -> torch.Tensor:
+#     flattened_pred = prediction.view(1, -1)
+#     flattened_targ = target.view(1, -1)
+#     assert flattened_pred.shape[0] == flattened_targ.shape[0]
+#     # nan_mask = torch.isnan(flattened_targ)
+#     # nan_mask = nan_mask.to(target.device)
+#     loss = (flattened_pred - flattened_targ) ** 2
 
-    return loss
+#     return loss
+
+
+def mse_operation(prediction, target):
+    """
+    Square the difference of target and predicted.
+    Args:
+        targ (torch.Tensor): target
+        pred (torch.Tensor): prediction
+    Returns:
+        diff (torch.Tensor): difference squared
+    """
+    targ = target.to(torch.float)
+    diff = (targ - prediction) ** 2
+    return diff

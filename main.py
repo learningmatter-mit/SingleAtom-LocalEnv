@@ -129,20 +129,42 @@ def main(args):
         targs.append(batch["target"])
 
     targs = torch.concat(targs).view(-1)
-    nan_mask_targs = torch.isnan(targs)
-    filtered_targs = targs[~nan_mask_targs]
-
-    normalizer["target"] = Normalizer(filtered_targs)
+    print(targs.shape)
+    valid_index = torch.bitwise_not(torch.isnan(targs))
+    filtered_targs = targs[valid_index]
+    print(filtered_targs.shape)
+    normalizer_target = Normalizer(filtered_targs)
+    normalizer["target"] = normalizer_target
+    # modelparams.update({"means": {"target": normalizer_target.mean}})
+    # modelparams.update({"stddevs": {"target": normalizer_target.std}})
 
     if details["multifidelity"]:
         fidelity = []
         for batch in train_set:
             fidelity.append(batch["fidelity"])
         fidelity = torch.concat(fidelity).view(-1)
-        nan_mask = torch.isnan(fidelity)
-        filtered_fidelity = fidelity[~nan_mask]
+        print(fidelity.shape)
+        valid_index = torch.bitwise_not(torch.isnan(fidelity))
+        filtered_fidelity = fidelity[valid_index]
+        print(filtered_fidelity.shape)
         normalizer_fidelity = Normalizer(filtered_fidelity)
         normalizer["fidelity"] = normalizer_fidelity
+        # modelparams.update(
+        #     {
+        #         "means": {
+        #             "target": normalizer_target.mean,
+        #             "fidelity": normalizer_fidelity.mean,
+        #         }
+        #     }
+        # )
+        # modelparams.update(
+        #     {
+        #         "stddevs": {
+        #             "target": normalizer_target.mean,
+        #             "fidelity": normalizer_fidelity.std,
+        #         }
+        #     }
+        # )
 
     # Get model
     model = get_model(
