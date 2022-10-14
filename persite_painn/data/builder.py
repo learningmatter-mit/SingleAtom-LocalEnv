@@ -29,6 +29,7 @@ def compute_prop(id_, crystal, multifidelity):
     if multifidelity:
         target = crystal.site_properties["target"]
         fidelity = crystal.site_properties["fidelity"]
+        index = compute_balanced_batch_index(target)
         if len(target) == 1:
             target = np.array(target).reshape(-1, 1)
     else:
@@ -36,13 +37,14 @@ def compute_prop(id_, crystal, multifidelity):
         if len(target) == 1:
             target = np.array(target).reshape(-1, 1)
         fidelity = None
+        index = None
     structure = AA.get_atoms(crystal)
     n = np.asarray(structure.numbers).reshape(-1, 1)
     xyz = np.asarray(structure.positions)
     nxyz = np.concatenate((n, xyz), axis=1)
     lattice = structure.cell[:]
 
-    return id_, nxyz, lattice, target, fidelity
+    return id_, nxyz, lattice, target, fidelity, index
 
 
 def gen_props_from_file(
@@ -71,8 +73,9 @@ def gen_props_from_file(
     lattice_list = []
     fidelity_list = []
     target_list = []
+    index_list = []
     for idx in tqdm(range(len(samples)), position=0, leave=True):
-        id_, nxyz, lattice, target, fidelity = compute_prop(
+        id_, nxyz, lattice, target, fidelity, index = compute_prop(
             samples[idx][0],
             samples[idx][1],
             multifidelity,
@@ -83,12 +86,14 @@ def gen_props_from_file(
         lattice_list.append(lattice)
         target_list.append(target)
         fidelity_list.append(fidelity)
+        index_list.append(index)
 
     props["nxyz"] = nxyz_list
     props["lattice"] = lattice_list
     props["name"] = name_list
     props["target"] = target_list
     props["fidelity"] = fidelity_list
+    props["classification"] = index_list
 
     return props
 
@@ -179,3 +184,14 @@ def split_train_validation_test(
     )
 
     return train, validation, test
+
+
+def compute_balanced_batch_index(target):
+    target = np.array(target).reshape(-1)
+    nan_mask = np.isnan(target)
+    # print(target[~nan_mask])
+    check = len(target[~nan_mask])
+    if check > 0:
+        return 0.0
+    else:
+        return 1.0

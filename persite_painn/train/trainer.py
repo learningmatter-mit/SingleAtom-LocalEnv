@@ -195,6 +195,8 @@ class Trainer:
                         f"{i}  {train_losses[i]:.4f}  {train_metrics[i]:.4f}  {val_losses[i]:.4f}  {val_metrics[i]:.4f}\n"
                     )
 
+        return best_metric
+
     def validate(self, device, test=False):
         """Validate the current state of the model using the validation set"""
         self.to(device=device)
