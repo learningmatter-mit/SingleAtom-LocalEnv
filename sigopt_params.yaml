@@ -1,0 +1,107 @@
+name: data_total_multifidelity
+metrics:
+- name: best_mae_error
+  strategy: optimize
+  objective: minimize
+parameters:
+- name: weight_decay
+  bounds:
+    min: 0.0
+    max: 1.0
+  type: double
+- name: lr
+  bounds:
+    min: 0.00001
+    max: 0.001
+  type: double
+- name: epochs
+  bounds:
+    min: 100
+    max: 500
+  type: int
+- name: loss_coeff_target
+  bounds:
+    min: 0.0
+    max: 2.0
+  type: double
+- name: loss_coeff_fidelity
+  bounds:
+    min: 0.0
+    max: 2.0
+  type: double
+- name: fc_dropout_target
+  bounds:
+    min: 0.0
+    max: 0.4
+  type: double
+- name: fc_dropout_fidelity
+  bounds:
+    min: 0.0
+    max: 0.4
+  type: double
+- name: readout_dropout_target
+  bounds:
+    min: 0.0
+    max: 0.4
+  type: double
+- name: readout_dropout_fidelity
+  bounds:
+    min: 0.0
+    max: 0.4
+  type: double
+- name: n_h_target
+  bounds:
+    min: 1
+    max: 2
+  type: int
+- name: n_h_fidelity
+  bounds:
+    min: 2
+    max: 4
+  type: int
+- name: h_fea_len_target
+  bounds:
+    min: 8
+    max: 32
+  type: int
+- name: h_fea_len_fidelity
+  bounds:
+    min: 64
+    max: 256
+  type: int
+- name: atom_fea_len_target
+  bounds:
+    min: 8
+    max: 32
+  type: int
+- name: atom_fea_len_fidelity
+  bounds:
+    min: 64
+    max: 256
+  type: int
+- name: conv_dropout
+  bounds:
+    min: 0.0
+    max: 0.3
+  type: double
+- name: cutoff
+  bounds:
+    min: 4.0
+    max: 7.0
+  type: double
+- name: n_rbf
+  bounds:
+    min: 15
+    max: 25
+  type: int
+- name: feat_dim
+  bounds:
+    min: 32
+    max: 128
+  type: int
+- name: num_conv
+  bounds:
+    min: 3
+    max: 5
+  type: int
+budget: 500

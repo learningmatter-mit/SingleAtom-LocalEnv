@@ -1,0 +1,64 @@
+{
+    "wandb": {
+        "project": "per-site learning",
+        "name": "perov-221009-multifidelity"
+    },
+    "details": {
+        "multifidelity": true,
+        "output_keys": [
+            "deltaE_O",
+            "deltaE_OH"
+        ],
+        "fidelity_keys": [
+            "magmom",
+            "bandfilling",
+            "bandcenter"
+        ],
+        "loss_fn": "MSE",
+        "metric_fn": "MAE",
+        "optim": "AdamW",
+        "lr": 0.000491,
+        "weight_decay": 0.3486,
+        "sched": "reduce_on_plateau",
+        "val_size": 0.2,
+        "test_size": 0.2
+    },
+    "modelparams": {
+        "feat_dim": 115,
+        "activation": "swish",
+        "activation_f": "softplus",
+        "n_rbf": 24,
+        "cutoff": 6.6315,
+        "num_conv": 3,
+        "learnable_k": true,
+        "conv_dropout": 0.1362,
+        "atom_fea_len": {
+            "fidelity": 104,
+            "target": 83
+        },
+        "h_fea_len": {
+            "fidelity": 97,
+            "target": 121
+        },
+        "n_h": {
+            "fidelity": 1,
+            "target": 4
+        },
+        "readout_dropout": {
+            "fidelity": 0.2518,
+            "target": 0.3
+        },
+        "fc_dropout": {
+            "fidelity": 0.0151,
+            "target": 0.07778
+        },
+        "n_outputs": {
+            "fidelity": 3,
+            "target": 2
+        },
+        "loss_coeff": {
+            "fidelity": 1.222,
+            "target": 0.8252
+        }
+    }
+}

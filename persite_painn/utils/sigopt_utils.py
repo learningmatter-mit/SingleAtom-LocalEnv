@@ -1,5 +1,6 @@
-def convert_to_sigopt_params(modelparams, sigoptparams):
+def convert_to_sigopt_params(details, modelparams, sigoptparams):
     converted_params = {}
+    converted_details = details
     sigoptparams.setdefault("feat_dim", modelparams["feat_dim"])
     sigoptparams.setdefault("n_rbf", modelparams["n_rbf"])
     sigoptparams.setdefault("cutoff", modelparams["cutoff"])
@@ -29,6 +30,11 @@ def convert_to_sigopt_params(modelparams, sigoptparams):
         "loss_coeff_fidelity", modelparams["loss_coeff"]["fidelity"]
     )
     sigoptparams.setdefault("loss_coeff_target", modelparams["loss_coeff"]["target"])
+
+    # details
+    sigoptparams.setdefault("lr", details["lr"])
+    sigoptparams.setdefault("weight_decay", details["weight_decay"])
+    sigoptparams.setdefault("epochs", details["epochs"])
 
     converted_params["activation"] = modelparams["activation"]
     converted_params["activation_f"] = modelparams["activation_f"]
@@ -64,4 +70,10 @@ def convert_to_sigopt_params(modelparams, sigoptparams):
         "fidelity": sigoptparams.loss_coeff_fidelity,
     }
 
-    return converted_params
+    converted_details["lr"] = {
+        "lr": sigoptparams.lr,
+    }
+    converted_details["weight_decay"] = {
+        "weight_decay": sigoptparams.weight_decay,
+    }
+    return converted_details, converted_params
