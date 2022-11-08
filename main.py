@@ -6,8 +6,8 @@ import wandb
 
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import RandomSampler
 
+from persite_painn.data.sampler import ImbalancedDatasetSampler
 from persite_painn.data import collate_dicts
 from persite_painn.data.builder import build_dataset, split_train_validation_test
 from persite_painn.nn.builder import get_model, load_params
@@ -17,7 +17,6 @@ from persite_painn.train.evaluate import test_model
 from persite_painn.utils.train_utils import Normalizer
 from persite_painn.data.preprocess import convert_site_prop
 from persite_painn.utils.wandb_utils import save_artifacts
-
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
 parser.add_argument("--data_raw", default="", type=str, help="path to raw data")
@@ -35,7 +34,7 @@ parser.add_argument(
     "--workers", default=0, type=int, help="number of data loading workers"
 )
 parser.add_argument(
-    "--epochs", default=1500, type=int, help="number of total epochs to run"
+    "--epochs", default=150, type=int, help="number of total epochs to run"
 )
 parser.add_argument(
     "--start_epoch",
@@ -50,13 +49,13 @@ parser.add_argument("--cuda", default=2, type=int, help="GPU setting")
 parser.add_argument("--device", default="cuda", type=str, help="cpu or cuda")
 parser.add_argument(
     "--early_stop_val",
-    default=50,
+    default=12,
     type=int,
     help="early stopping condition for validation loss update count",
 )
 parser.add_argument(
     "--early_stop_train",
-    default=0.01,
+    default=0.1,
     type=float,
     help="early stopping condition for train loss tolerance",
 )
@@ -66,6 +65,12 @@ parser.add_argument(
     type=int,
     help="Seed of random initialization to control the experiment",
 )
+parser.add_argument(
+    "--wandb",
+    default=False,
+    type=bool,
+    help="Whether to run with W & B",
+)
 
 
 def main(args):
@@ -74,6 +79,7 @@ def main(args):
     # wandb
     wandb_config.update(details)
     wandb_config.update(modelparams)
+
     wandb.init(
         project=wandb_config["project"], name=wandb_config["name"], config=wandb_config
     )
@@ -246,7 +252,7 @@ def main(args):
         batch_size=args.batch_size,
         num_workers=args.workers,
         collate_fn=collate_dicts,
-        sampler=RandomSampler(train_set),
+        sampler=ImbalancedDatasetSampler("classification", train_set.props),
     )
     val_loader = DataLoader(
         val_set,
@@ -280,7 +286,7 @@ def main(args):
         normalizer=normalizer,
     )
     # Train
-    trainer.train(
+    _ = trainer.train(
         device=args.device,
         start_epoch=args.start_epoch,
         n_epochs=args.epochs,
@@ -288,7 +294,6 @@ def main(args):
         best_metric=best_metric,
         early_stop=early_stop,
     )
-
     # Test results
     test_loader = DataLoader(
         test_set,

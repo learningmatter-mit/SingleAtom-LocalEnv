@@ -22,6 +22,8 @@ from persite_painn.data.preprocess import convert_site_prop
 from persite_painn.utils.wandb_utils import save_artifacts
 from persite_painn.utils.sigopt_utils import convert_to_sigopt_params
 
+# Running command
+#
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
 parser.add_argument("--data_raw", default="", type=str, help="path to raw data")
