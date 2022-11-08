@@ -17,7 +17,7 @@ def convert_site_prop(data, output_keys, fidelity_keys=None):
                         o_val += [np.abs(site_prop[key_o][i])]
                     else:
                         o_val += [np.nan]
-                elif key_o == "deltaE_O" or key_o == "deltaE_OH":
+                elif key_o == "detalE":
                     if key_o in list(site_prop.keys()):
                         E_val = site_prop[key_o][i]
                         if E_val > -5 and E_val < 5:
@@ -40,7 +40,7 @@ def convert_site_prop(data, output_keys, fidelity_keys=None):
                             f_val += [np.abs(site_prop[key_f][i])]
                         else:
                             f_val += [np.nan]
-                    elif key_f == "deltaE_O" or key_f == "deltaE_OH":
+                    elif key_f == "deltaE":
                         if key_f in list(site_prop.keys()):
                             E_val = site_prop[key_f][i]
                             if E_val > -5 and E_val < 5:
