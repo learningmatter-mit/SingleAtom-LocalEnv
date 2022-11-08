@@ -12,12 +12,12 @@ parameters:
 - name: lr
   bounds:
     min: 0.00001
-    max: 0.001
+    max: 0.005
   type: double
 - name: epochs
   bounds:
     min: 100
-    max: 500
+    max: 300
   type: int
 - name: loss_coeff_target
   bounds:
@@ -104,4 +104,4 @@ parameters:
     min: 3
     max: 5
   type: int
-budget: 500
+budget: 40

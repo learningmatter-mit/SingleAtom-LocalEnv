@@ -1,18 +1,18 @@
 {
     "wandb": {
-        "project": "per-site learning",
-        "name": "perov-221009-multifidelity"
+        "project": "per-site learning sigopt",
+        "name": "sigopt 1108"
     },
     "details": {
         "multifidelity": true,
         "output_keys": [
-            "deltaE_O",
-            "deltaE_OH"
+            "deltaE"
         ],
         "fidelity_keys": [
             "magmom",
             "bandfilling",
-            "bandcenter"
+            "bandcenter",
+            "bandwidth"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
@@ -37,12 +37,12 @@
             "target": 83
         },
         "h_fea_len": {
-            "fidelity": 97,
-            "target": 121
+            "fidelity": 200,
+            "target": 16
         },
         "n_h": {
-            "fidelity": 1,
-            "target": 4
+            "fidelity": 4,
+            "target": 2
         },
         "readout_dropout": {
             "fidelity": 0.2518,
@@ -53,8 +53,8 @@
             "target": 0.07778
         },
         "n_outputs": {
-            "fidelity": 3,
-            "target": 2
+            "fidelity": 4,
+            "target": 1
         },
         "loss_coeff": {
             "fidelity": 1.222,
