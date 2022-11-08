@@ -43,6 +43,7 @@ class Trainer:
         scheduler,
         train_loader,
         validation_loader,
+        run_wandb,
         normalizer=None,
     ):
         self.model_path = model_path
@@ -54,6 +55,7 @@ class Trainer:
         self.train_loader = train_loader
         self.validation_loader = validation_loader
         self.normalizer = normalizer
+        self.run_wandb = run_wandb
 
     def train(
         self,
@@ -130,15 +132,16 @@ class Trainer:
             val_metrics.append(val_metric)
 
             # wandb
-            wandb.log(
-                {
-                    "loss": losses.avg,
-                    "train_acc": metrics.avg,
-                    "val_loss": val_loss,
-                    "val_acc": val_metric,
-                },
-                step=epoch,
-            )
+            if self.run_wandb:
+                wandb.log(
+                    {
+                        "loss": losses.avg,
+                        "train_acc": metrics.avg,
+                        "val_loss": val_loss,
+                        "val_acc": val_metric,
+                    },
+                    step=epoch,
+                )
             if val_loss != val_loss:
                 print("Exit due to NaN")
                 sys.exit(1)

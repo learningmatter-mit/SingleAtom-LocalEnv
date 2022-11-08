@@ -72,7 +72,12 @@ parser.add_argument(
     type=int,
     help="Seed of random initialization to control the experiment",
 )
-
+parser.add_argument(
+    "--wandb",
+    default=False,
+    type=bool,
+    help="Whether to use W & B",
+)
 
 def main(args):
     # Load details
@@ -83,13 +88,12 @@ def main(args):
         details, modelparams, sigoptparams
     )
     # wandb Sigopt
-    wandb_config.update(new_details)
-    wandb_config.update(new_params)
-    # wandb_config.update(details)
-    # wandb_config.update(modelparams)
-    wandb.init(
-        project=wandb_config["project"], name=wandb_config["name"], config=wandb_config
-    )
+    if args.wandb:
+        wandb_config.update(new_details)
+        wandb_config.update(new_params)
+        wandb.init(
+            project=wandb_config["project"], name=wandb_config["name"], config=wandb_config
+        )
 
     # Load data
     if os.path.exists(args.cache):
@@ -308,6 +312,7 @@ def main(args):
         train_loader=train_loader,
         validation_loader=val_loader,
         normalizer=normalizer,
+        run_wandb=args.wandb
     )
     # Train Sigopt
     best_metric_score = trainer.train(
@@ -370,7 +375,8 @@ def main(args):
         )
 
     # save wandb artifacts
-    save_artifacts(args.savedir)
+    if args.wandb:
+        save_artifacts(args.savedir)
 
 
 if __name__ == "__main__":

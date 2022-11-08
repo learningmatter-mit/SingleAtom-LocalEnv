@@ -76,13 +76,14 @@ parser.add_argument(
 def main(args):
     # Load details
     wandb_config, details, modelparams, model_type = load_params(args.details)
-    # wandb
-    wandb_config.update(details)
-    wandb_config.update(modelparams)
 
-    wandb.init(
-        project=wandb_config["project"], name=wandb_config["name"], config=wandb_config
-    )
+    # wandb Sigopt
+    if args.wandb:
+        wandb_config.update(details)
+        wandb_config.update(modelparams)
+        wandb.init(
+            project=wandb_config["project"], name=wandb_config["name"], config=wandb_config
+        )
 
     # Load data
     if os.path.exists(args.cache):
@@ -283,6 +284,7 @@ def main(args):
         scheduler=scheduler,
         train_loader=train_loader,
         validation_loader=val_loader,
+        run_wandb=args.wandb,
         normalizer=normalizer,
     )
     # Train
@@ -336,7 +338,8 @@ def main(args):
         )
 
     # save wandb artifacts
-    save_artifacts(args.savedir)
+    if args.wandb:
+        save_artifacts(args.savedir)
 
 
 if __name__ == "__main__":
