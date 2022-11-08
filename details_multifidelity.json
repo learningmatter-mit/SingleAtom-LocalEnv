@@ -17,24 +17,24 @@
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "AdamW",
-        "lr": 0.0005,
-        "weight_decay": 0.2,
+        "lr": 0.00098,
+        "weight_decay": 0.067,
         "sched": "reduce_on_plateau",
         "val_size": 0.2,
         "test_size": 0.2
     },
     "modelparams": {
-        "feat_dim": 64,
+        "feat_dim": 93,
         "activation": "swish",
         "activation_f": "softplus",
-        "n_rbf": 25,
-        "cutoff": 6.5,
-        "num_conv": 3,
+        "n_rbf": 23,
+        "cutoff": 6.615,
+        "num_conv": 4,
         "learnable_k": true,
         "conv_dropout": 0.05,
         "atom_fea_len": {
-            "target": 16,
-            "fidelity": 234
+            "target": 28,
+            "fidelity": 240
         },
         "h_fea_len": {
             "target": 32,
@@ -42,23 +42,23 @@
         },
         "n_h": {
             "target": 1,
-            "fidelity": 3
+            "fidelity": 4
         },
         "readout_dropout": {
-            "target": 0.1,
-            "fidelity": 0.1
+            "target": 0.083,
+            "fidelity": 0.176
         },
         "fc_dropout": {
-            "target": 0.15,
-            "fidelity": 0.05
+            "target": 0.00787,
+            "fidelity": 0.052
         },
         "n_outputs": {
             "target": 1,
             "fidelity": 4
         },
         "loss_coeff": {
-            "target": 1.0,
-            "fidelity": 2.0
+            "target": 0.93,
+            "fidelity": 0.456
         }
     }
 }
