@@ -2,7 +2,7 @@ import torch
 from typing import Dict, Union
 
 
-def inference(model, data, output_key, normalizer=None, device="cpu"):
+def inference(model, data, normalizer=None, output_key="target", device="cpu"):
     """Inference
 
     Args:
@@ -24,6 +24,63 @@ def inference(model, data, output_key, normalizer=None, device="cpu"):
         return out
 
 
+def ensemble_inference(model_list, data, output_key, normalizer=None, device="cpu", var=False):
+    """Inference
+
+    Args:
+            model_list (List[Torch.nn.Module)]: torch model list
+            data (Torch.nn.Data): torch Data
+            output_key (str): output key
+            normalizer (Dict): Information for normalization
+
+    Returns:
+            out (torch.Tensor): inference tensor
+    """
+    output_bin = []
+    for model in model_list:
+        model.to(device)
+        model.eval()
+        out = model(data, inference=True)[output_key]
+        if normalizer is None:
+            output_bin.append(out).unsqueeze(1)
+        else:
+            out = normalizer[output_key].denorm(out).unsqueeze(1)
+            output_bin.append(out)
+    if var:
+        output_tensor = torch.var(torch.stack(output_bin, dim=1), dim=1).squeeze(1)
+    else:
+        output_tensor = torch.mean(torch.stack(output_bin, dim=1), dim=1).squeeze(1)
+
+    return output_tensor
+
+
+def get_metal_idx(data_id: int, dataset: Dict):
+    struc = dataset[data_id]
+    metal_bin = []
+    for i, specie in enumerate(struc.species):
+        if specie.Z > 20:
+            metal_bin.append(i)
+    return metal_bin
+
+
+def get_metal_specie(data_id: int, dataset: Dict):
+    struc = dataset[data_id]
+    metal_bin = []
+    for _, specie in enumerate(struc.species):
+        if specie.Z > 20:
+            metal_bin.append(specie.Z)
+    return metal_bin
+
+
+def get_metal_idx_batch(batch):
+    metal_bin = []
+    for i, data in enumerate(batch['nxyz']):
+        if data[0].item() > 20:
+            metal_bin.append(i)
+
+    return metal_bin
+
+
 TESNOR = torch.Tensor
 
 
@@ -33,11 +90,7 @@ class Normalizer:
     def __init__(self, inputs: Union[TESNOR, Dict]):
         """tensor is taken as a sample to calculate the mean and std"""
         if isinstance(inputs, TESNOR):
-            self.mean = torch.mean(inputs)
-            self.std = torch.std(inputs)
-            self.max = torch.max(inputs)
-            self.min = torch.min(inputs)
-            self.sum = torch.sum(inputs)
+            self.mean, self.std, self.max, self.min, self.sum = self.preprocess(inputs)
 
         elif isinstance(inputs, Dict):
             self.load_state_dict(inputs)
@@ -46,14 +99,22 @@ class Normalizer:
             TypeError
 
     def norm(self, tensor):
-        return (tensor - self.mean) / self.std
+        mean = self.mean.to(tensor.device)
+        std = self.std.to(tensor.device)
+
+        return (tensor - mean) / std
         # return (tensor - self.mean) / self.std
 
     def norm_to_unity(self, tensor):
-        return tensor / self.sum
+        _sum = self.sum.to(tensor.device)
+
+        return tensor / _sum
 
     def denorm(self, normed_tensor):
-        return normed_tensor * self.std + self.mean
+        std = self.std.to(normed_tensor.device)
+        mean = self.mean.to(normed_tensor.device)
+
+        return normed_tensor * std + mean
         # return normed_tensor * self.std + self.mean
 
     def state_dict(self):
@@ -71,3 +132,48 @@ class Normalizer:
         self.max = state_dict["max"]
         self.min = state_dict["min"]
         self.sum = state_dict["sum"]
+
+    def preprocess(self, tensor):
+        """
+        Preprocess the tensor:
+        (1) filter nan
+        (2) calculate mean, std, max, min, sum depending on the dimension
+        """
+        if tensor.dim() == 1:
+            valid_index = torch.bitwise_not(torch.isnan(tensor))
+            filtered_targs = tensor[valid_index]
+            mean = torch.mean(filtered_targs)
+            std = torch.std(filtered_targs)
+            _max = torch.max(filtered_targs)
+            _min = torch.min(filtered_targs)
+            _sum = torch.sum(filtered_targs)
+        elif tensor.dim() == 2:
+            mean_bin = []
+            std_bin = []
+            _max_bin = []
+            _min_bin = []
+            _sum_bin = []
+            transposed = torch.transpose(tensor, dim0=0, dim1=1)
+            for values in transposed:
+                valid_index = torch.bitwise_not(torch.isnan(values))
+                filtered_targs = values[valid_index]
+                mean_temp = torch.mean(filtered_targs)
+                mean_bin.append(mean_temp)
+                std_temp = torch.std(filtered_targs)
+                std_bin.append(std_temp)
+                max_temp = torch.max(filtered_targs)
+                _max_bin.append(max_temp)
+                min_temp = torch.min(filtered_targs)
+                _min_bin.append(min_temp)
+                sum_temp = torch.sum(filtered_targs)
+                _sum_bin.append(sum_temp)
+
+            mean = torch.tensor(mean_bin)
+            std = torch.tensor(std_bin)
+            _max = torch.tensor(_max_bin)
+            _min = torch.tensor(_min_bin)
+            _sum = torch.tensor(_sum_bin)
+        else:
+            ValueError("input dimension is not right.")
+
+        return mean, std, _max, _min, _sum
