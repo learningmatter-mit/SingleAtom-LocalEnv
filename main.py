@@ -5,12 +5,12 @@ import sys
 import wandb
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 
 from persite_painn.data.sampler import ImbalancedDatasetSampler
 from persite_painn.data import collate_dicts
 from persite_painn.data.builder import build_dataset, split_train_validation_test
-from persite_painn.nn.builder import get_model, load_params
+from persite_painn.nn.builder import get_model, load_params_from_path
 from persite_painn.train.builder import get_optimizer, get_scheduler, get_loss_metric_fn
 from persite_painn.train.trainer import Trainer
 from persite_painn.train.evaluate import test_model
@@ -75,7 +75,7 @@ parser.add_argument(
 
 def main(args):
     # Load details
-    wandb_config, details, modelparams, model_type = load_params(args.details)
+    wandb_config, details, modelparams, model_type = load_params_from_path(args.details)
 
     # wandb Sigopt
     if args.wandb:
@@ -133,45 +133,40 @@ def main(args):
     normalizer = {}
     targs = []
     for batch in train_set:
+        if batch["target"].shape[1] == 1:
+            print(batch['name'])
         targs.append(batch["target"])
 
-    targs = torch.concat(targs).view(-1)
-    print(targs.shape)
-    valid_index = torch.bitwise_not(torch.isnan(targs))
-    filtered_targs = targs[valid_index]
-    print(filtered_targs.shape)
-    normalizer_target = Normalizer(filtered_targs)
+    targs = torch.concat(targs)
+    normalizer_target = Normalizer(targs)
     normalizer["target"] = normalizer_target
-    # modelparams.update({"means": {"target": normalizer_target.mean}})
-    # modelparams.update({"stddevs": {"target": normalizer_target.std}})
+    modelparams.update({"means": {"target": normalizer_target.mean}})
+    modelparams.update({"stddevs": {"target": normalizer_target.std}})
 
     if details["multifidelity"]:
         fidelity = []
         for batch in train_set:
             fidelity.append(batch["fidelity"])
-        fidelity = torch.concat(fidelity).view(-1)
-        print(fidelity.shape)
-        valid_index = torch.bitwise_not(torch.isnan(fidelity))
-        filtered_fidelity = fidelity[valid_index]
-        print(filtered_fidelity.shape)
-        normalizer_fidelity = Normalizer(filtered_fidelity)
+        fidelity = torch.concat(fidelity)
+
+        normalizer_fidelity = Normalizer(fidelity)
         normalizer["fidelity"] = normalizer_fidelity
-        # modelparams.update(
-        #     {
-        #         "means": {
-        #             "target": normalizer_target.mean,
-        #             "fidelity": normalizer_fidelity.mean,
-        #         }
-        #     }
-        # )
-        # modelparams.update(
-        #     {
-        #         "stddevs": {
-        #             "target": normalizer_target.mean,
-        #             "fidelity": normalizer_fidelity.std,
-        #         }
-        #     }
-        # )
+        modelparams.update(
+            {
+                "means": {
+                    "target": normalizer_target.mean,
+                    "fidelity": normalizer_fidelity.mean,
+                }
+            }
+        )
+        modelparams.update(
+            {
+                "stddevs": {
+                    "target": normalizer_target.mean,
+                    "fidelity": normalizer_fidelity.std,
+                }
+            }
+        )
 
     # Get model
     model = get_model(
@@ -228,18 +223,19 @@ def main(args):
         loss_coeff = {"target": 1.0}
         correspondence_keys = {"target": "target"}
     # Set loss function
+    # TODO: normalier issue
     loss_fn = get_loss_metric_fn(
         loss_coeff=loss_coeff,
         correspondence_keys=correspondence_keys,
         operation_name=details["loss_fn"],
-        normalizer=normalizer,
+        normalizer=None,
     )
     # Set metric function
     metric_fn = get_loss_metric_fn(
         loss_coeff=loss_coeff,
         correspondence_keys=correspondence_keys,
         operation_name=details["metric_fn"],
-        normalizer=normalizer,
+        normalizer=None,
     )
 
     # Set scheduler
@@ -248,13 +244,22 @@ def main(args):
     )
 
     # Set DataLoader
-    train_loader = DataLoader(
-        train_set,
-        batch_size=args.batch_size,
-        num_workers=args.workers,
-        collate_fn=collate_dicts,
-        sampler=ImbalancedDatasetSampler("classification", train_set.props),
-    )
+    if details["multifidelity"]:
+        train_loader = DataLoader(
+            train_set,
+            batch_size=args.batch_size,
+            num_workers=args.workers,
+            collate_fn=collate_dicts,
+            sampler=ImbalancedDatasetSampler("classification", train_set.props),
+        )
+    else:
+        train_loader = DataLoader(
+            train_set,
+            batch_size=args.batch_size,
+            num_workers=args.workers,
+            collate_fn=collate_dicts,
+            sampler=RandomSampler(train_set),
+        )
     val_loader = DataLoader(
         val_set,
         batch_size=args.batch_size,
@@ -264,10 +269,16 @@ def main(args):
     # Save ids
     train_ids = []
     for item in train_set:
-        train_ids.append(item["name"].item())
+        if type(item["name"]) == str:
+            train_ids.append(item["name"])
+        else:
+            train_ids.append(item["name"].item())
     val_ids = []
     for item in val_set:
-        val_ids.append(item["name"].item())
+        if type(item["name"]) == str:
+            val_ids.append(item["name"])
+        else:
+            val_ids.append(item["name"].item())
 
     pkl.dump(train_ids, open(f"{args.savedir}/train_ids.pkl", "wb"))
     pkl.dump(val_ids, open(f"{args.savedir}/val_ids.pkl", "wb"))
@@ -313,7 +324,7 @@ def main(args):
         test_preds,
         test_targets,
         test_ids,
-        _,
+        metric_out,
         test_preds_fidelity,
         test_targets_fidelity,
     ) = test_model(
@@ -321,10 +332,10 @@ def main(args):
         test_loader=test_loader,
         metric_fn=metric_fn,
         device="cpu",
-        normalizer=normalizer,
+        # normalizer=normalizer,
         multifidelity=details["multifidelity"],
     )
-
+    print(f"TEST Accuracy: {metric_out}")
     # Save Test Results
     pkl.dump(test_ids, open(f"{args.savedir}/test_ids.pkl", "wb"))
     pkl.dump(test_preds, open(f"{args.savedir}/test_preds.pkl", "wb"))
@@ -339,7 +350,7 @@ def main(args):
 
     # save wandb artifacts
     if args.wandb:
-        save_artifacts(args.savedir)
+        save_artifacts(args.savedir, details["multifidelity"])
 
 
 if __name__ == "__main__":

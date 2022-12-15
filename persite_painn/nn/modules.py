@@ -275,7 +275,9 @@ class ScaleShift(nn.Module):
         """
 
         stddev = self.stddevs.get(key, 1.0)
+        stddev = stddev.to(inp.device)
         mean = self.means.get(key, 0.0)
+        mean = mean.to(inp.device)
         out = inp * stddev + mean
 
         return out

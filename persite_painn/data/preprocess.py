@@ -23,10 +23,10 @@ def convert_site_prop(data, output_keys, fidelity_keys=None):
                         o_val += [E_val]
                     else:
                         o_val += [np.nan]
-                elif key_o in list(site_prop.keys()) and key_o not in ["magmom", "deltaE", "deltaO", "deltaOH","deltaOOH"]:
+                elif key_o in list(site_prop.keys()) and key_o not in ["magmom", "deltaE", "deltaO", "deltaOH", "deltaOOH"]:
                     o_val += [site_prop[key_o][i]]
                 else:
-                    ValueError("output key not in the site props")
+                    o_val += [np.nan]
             target.append(o_val)
             if fidelity_keys is not None:
                 f_val = []
@@ -43,7 +43,7 @@ def convert_site_prop(data, output_keys, fidelity_keys=None):
                     elif key_f in list(site_prop.keys()) and key_f not in ["magmom", "deltaE", "deltaO", "deltaOH","deltaOOH"]:
                         f_val += [site_prop[key_f][i]]
                     else:
-                        ValueError("fidelity key not in the site props")
+                        f_val += [np.nan]
 
                 fidelity.append(f_val)
         if fidelity_keys is not None:

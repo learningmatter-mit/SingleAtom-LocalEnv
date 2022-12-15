@@ -1,6 +1,6 @@
 import warnings
 from csv import reader
-from typing import List
+from typing import List, Optional, Dict
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -30,15 +30,52 @@ from matplotlib.cm import (
 from matplotlib.colors import LogNorm, Normalize, to_hex
 from pandas import options
 from pymatgen.core.periodic_table import Element
+from pymatgen.core.structure import Structure
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_absolute_error
 from tqdm import tqdm
 
+PROPERTIES = {
+    "center_diff": "B 3d $-$ O 2p difference",
+    "op": "O 2p $-$ $E_v$",
+    "form_e": "Formation energy",
+    "e_hull": "Energy above hull",
+    "tot_e": "Energy per atom",
+    "time": "Runtime",
+    "magmom": "Magnetic moment",
+    "ads_e": "Adsorption energy",
+    "acid_stab": "Electrochemical stability",
+    "bandcenter": "DOS band center",
+    "bandwidth": "DOS band width",
+    "phonon": "Atomic vibration frequency",
+    "bader": "Bader charge",
+}
+
+UNITS = {
+    "center_diff": "eV",
+    "op": "eV",
+    "form_e": "eV",
+    "e_hull": "eV/atom",
+    "tot_e": "eV/atom",
+    "time": "s",
+    "magmom": "$\mu_B$",
+    "ads_e": "eV",
+    "acid_stab": "eV/atom",
+    "bandcenter": "eV",
+    "bandwidth": "eV",
+    "phonon": "THz",
+    "bader": "$q_e$",
+}
+
 
 def plot_hexbin(
-    targ,
-    pred,
-    key,
+    targs,
+    preds,
+    prop_key: str,
+    target_index: Optional[int] = None,
+    test_ids: Optional[List] = None,
+    structures: Optional[Dict[int, Structure]] = None,
+    Z_range: Optional[List] = None,
     title="",
     scale="linear",
     inc_factor=1.1,
@@ -47,51 +84,71 @@ def plot_hexbin(
     plot_helper_lines=False,
     cmap="viridis",
 ):
+    # matplotlib.rcParams.update({"font.size": 18})
 
-    props = {
-        "center_diff": "B 3d $-$ O 2p difference",
-        "op": "O 2p $-$ $E_v$",
-        "form_e": "formation energy",
-        "e_hull": "energy above hull",
-        "tot_e": "energy per atom",
-        "time": "runtime",
-        "magmom": "magnetic moment",
-        "magmom_abs": "magnetic moment",
-        "ads_e": "adsorption energy",
-        "acid_stab": "electrochemical stability",
-        "bandcenter": "DOS band center",
-        "bandwidth": "DOS band width",
-        "phonon": "atomic vibration frequency",
-        "bader": "Bader charge",
-    }
+    new_targ = []
+    new_pred = []
+    if test_ids is None:
+        new_targ = targs
+        new_pred = preds
+    else:
+        pred_dictionary: Dict[int, List] = {}
+        dictionary: Dict[int, List] = {}
+        for index in tqdm(range(len(test_ids))):
+            id_ = test_ids[index]
+            structure = structures.get(id_)
+            elems = [Element(x.symbol).Z for x in structure.species]
 
-    units = {
-        "center_diff": "eV",
-        "op": "eV",
-        "form_e": "eV",
-        "e_hull": "eV/atom",
-        "tot_e": "eV/atom",
-        "time": "s",
-        "magmom": "$\mu_B$",
-        "magmom_abs": "|$\mu_B$|",
-        "ads_e": "eV",
-        "acid_stab": "eV/atom",
-        "bandcenter": "eV",
-        "bandwidth": "eV",
-        "phonon": "THz",
-        "bader": "$q_e$",
-    }
+            pred = preds[index]
+            targ = targs[index]
+
+            # get dictionary
+            for i in range(len(elems)):
+
+                elem = elems[i]
+                y = targ[i][target_index]
+
+                if elem in dictionary:
+                    array = dictionary[elem]
+                    array.append(y)
+                    dictionary[elem] = array
+
+                else:
+                    dictionary[elem] = [y]
+
+            # get pred_dictionary
+            for i in range(len(elems)):
+
+                elem = elems[i]
+                y = pred[i][target_index]
+
+                if elem in pred_dictionary:
+                    array = pred_dictionary[elem]
+                    array.append(y)
+                    pred_dictionary[elem] = array
+
+                else:
+                    pred_dictionary[elem] = [y]
+
+        if Z_range is None:
+            for key in list(dictionary.keys()):
+                new_targ += dictionary[key]
+                new_pred += pred_dictionary[key]
+        else:        
+            for key in Z_range:
+                new_targ += dictionary[key]
+                new_pred += pred_dictionary[key]
 
     fig, ax = plt.subplots(figsize=(6, 6))
 
-    mae = mean_absolute_error(targ, pred)
-    r, _ = pearsonr(targ, pred)
+    mae = mean_absolute_error(new_targ, new_pred)
+    r, _ = pearsonr(new_targ, new_pred)
 
     if scale == "log":
-        pred = np.abs(pred) + 1e-8
-        targ = np.abs(targ) + 1e-8
+        new_pred = np.abs(new_pred) + 1e-8
+        new_targ = np.abs(new_targ) + 1e-8
 
-    lim_min = min(np.min(pred), np.min(targ))
+    lim_min = min(np.min(new_pred), np.min(new_targ))
     if lim_min < 0:
         if lim_min > -0.1:
             lim_min = -0.1
@@ -100,7 +157,7 @@ def plot_hexbin(
         if lim_min < 0.1:
             lim_min = -0.1
         lim_min *= dec_factor
-    lim_max = max(np.max(pred), np.max(targ))
+    lim_max = max(np.max(new_pred), np.max(new_targ))
     if lim_max <= 0:
         if lim_max > -0.1:
             lim_max = 0.2
@@ -122,8 +179,8 @@ def plot_hexbin(
     ax.axline((0, 0), (1, 1), color="#000000", zorder=-1, linewidth=0.5)
 
     hb = ax.hexbin(
-        pred,
-        targ,
+        new_targ,
+        new_pred,
         cmap=cmap,
         gridsize=60,
         bins=bins,
@@ -161,11 +218,11 @@ def plot_hexbin(
             ax.plot(x, y, color="#000000", zorder=2, linewidth=0.5, linestyle="--")
 
     ax.set_title(title, fontsize=14)
-    ax.set_ylabel("Calculated %s [%s]" % (props[key], units[key]), fontsize=12)
-    ax.set_xlabel("Predicted %s [%s]" % (props[key], units[key]), fontsize=12)
+    ax.set_ylabel("Predicted %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=12)
+    ax.set_xlabel("Calculated %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=12)
 
     ax.annotate(
-        "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, units[key]),
+        "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, UNITS[prop_key]),
         (0.03, 0.88),
         xycoords="axes fraction",
         fontsize=12,
@@ -179,34 +236,18 @@ def flatten(t):
 
 
 def plot_violin(
-    test_ids,
-    structures,
-    test_targs,
-    test_preds,
-    color1,
-    color2,
-    target_index,
-    ylabel="y",
+    targs,
+    preds,
+    target_index: int,
+    test_ids: List,
+    structures: Structure,
+    prop_key:str,
+    color1: str = "#679289",
+    color2: str = "#F4C095",
     Z_range=[22, 30],
-    bader=False,
+    legend_loc="lower left",
 ):
     matplotlib.rcParams.update({"font.size": 18})
-    ncore = {
-        21: 11,
-        22: 10,
-        23: 11,
-        24: 12,
-        25: 13,
-        26: 14,
-        27: 9,
-        28: 16,
-        29: 17,
-        30: 12,
-    }
-    for i in range(0, 21):
-        ncore.update({i: 0})
-    for i in range(31, 150):
-        ncore.update({i: 0})
 
     pred_dictionary = {}
     dictionary = {}
@@ -217,22 +258,14 @@ def plot_violin(
         structure = structures[id_]
         elems = [Element(x.symbol).Z for x in structure.species]
 
-        pred = test_preds[index]
-        targ = test_targs[index]
-
-        if bader:
-
-            targ = [ncore[elems[i]] - targ[i][target_index] for i in range(len(targ))]
-            pred = [ncore[elems[i]] - pred[i][target_index] for i in range(len(pred))]
+        pred = preds[index]
+        targ = targs[index]
 
         # get dictionary
         for i in range(len(elems)):
 
             elem = elems[i]
-            if bader:
-                y = targ[i]
-            else:
-                y = targ[i][target_index]
+            y = targ[i][target_index]
 
             if elem in dictionary:
                 array = dictionary[elem]
@@ -246,10 +279,7 @@ def plot_violin(
         for i in range(len(elems)):
 
             elem = elems[i]
-            if bader:
-                y = pred[i]
-            else:
-                y = pred[i][target_index]
+            y = pred[i][target_index]
 
             if elem in pred_dictionary:
                 array = pred_dictionary[elem]
@@ -263,7 +293,6 @@ def plot_violin(
     Zs = []
     ys = []
     hues = []
-
     for Z in Z_range:
 
         ys.append(dictionary[Z])
@@ -279,14 +308,14 @@ def plot_violin(
     hues = flatten(hues)
 
     df["Z"] = Zs
-    df[ylabel] = ys
+    df[prop_key] = ys
     df["hue"] = hues
 
     my_pal = {"targ": color1, "pred": color2}
 
     ax = sns.violinplot(
         x="Z",
-        y=ylabel,
+        y=prop_key,
         hue="hue",
         data=df,
         palette=my_pal,
@@ -296,8 +325,8 @@ def plot_violin(
     )
 
     # plt.ylim([-0.1,5.2])
-    plt.legend(loc="upper right")
-
+    plt.legend(loc=legend_loc)
+    ax.set_ylabel("%s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=12)
     xticks = [Element.from_Z(int(text._text)).symbol for text in ax.get_xticklabels()]
     ax.set_xticklabels(xticks)
 

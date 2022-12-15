@@ -82,7 +82,7 @@ def get_model(params, model_type="Painn", **kwargs):
     return model
 
 
-def load_params(param_path):
+def load_params_from_path(param_path):
     with open(param_path, "r") as f:
         info = json.load(f)
 
@@ -97,7 +97,7 @@ def load_params(param_path):
     return wandb_config, details, params, model_type
 
 
-def load_model(params_path, model_path, model_type="Painn"):
+def load_model(model_path, model_type="Painn"):
     """Load pretrained model from the path.
 
     Args:
@@ -109,13 +109,19 @@ def load_model(params_path, model_path, model_type="Painn"):
     Returns:
             model, best_checkoint
     """
-    _, details, params, model_type = load_params(params_path)
-    model = get_model(
-        params,
-        model_type=model_type,
-        multifidelity=details["multifidelity"],
-    )
     best_checkpoint = torch.load(model_path)
+    if model_type == "Painn":
+        multifidelity = False
+    elif model_type == "PainnMultifidelity":
+        multifidelity = True
+    else:
+        NameError("Model type is not supported")
+
+    model = get_model(
+        params=best_checkpoint["modelparams"],
+        model_type=model_type,
+        multifidelity=multifidelity,
+    )
     model.load_state_dict(best_checkpoint["state_dict"])
     model.eval()
     return model, best_checkpoint

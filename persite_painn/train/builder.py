@@ -153,7 +153,7 @@ def get_loss_metric_fn(
     loss_coeff,
     correspondence_keys,
     operation_name,
-    normalizer,
+    normalizer=None,
 ):
     if operation_name == "MSE":
         loss_fn = build_loss_metric_fn(

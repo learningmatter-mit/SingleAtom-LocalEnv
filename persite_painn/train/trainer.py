@@ -150,6 +150,7 @@ class Trainer:
                 self.scheduler.step(val_loss)
             else:
                 self.scheduler.step()
+            # print(self.optimizer.param_groups[0]['lr'])
 
             is_best = val_loss < best_loss
             best_loss = min(val_loss, best_loss)
@@ -158,10 +159,12 @@ class Trainer:
                 normalizer_dict = {}
                 for key, val in self.normalizer.items():
                     normalizer_dict[key] = val.state_dict()
+                # TODO Save modelparams too
                 self.save_checkpoint(
                     {
                         "epoch": epoch + 1,
                         "state_dict": self.model.state_dict(),
+                        "modelparams": self.model.modelparams,
                         "best_metric": best_metric,
                         "best_loss": best_loss,
                         "optimizer": self.optimizer.state_dict(),
@@ -175,6 +178,7 @@ class Trainer:
                     {
                         "epoch": epoch + 1,
                         "state_dict": self.model.state_dict(),
+                        "modelparams": self.model.modelparams,
                         "best_metric": best_metric,
                         "best_loss": best_loss,
                         "optimizer": self.optimizer.state_dict(),

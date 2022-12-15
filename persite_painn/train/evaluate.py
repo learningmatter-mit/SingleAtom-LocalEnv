@@ -1,7 +1,21 @@
 import numpy as np
 import torch
+
 from persite_painn.train import AverageMeter
 from persite_painn.utils import batch_to, inference
+
+
+def shrink_batch(batch):
+    """
+    Exclude certain keys from the batch that take up a lot of memory
+    """
+
+    bad_keys = ['nbr_list', 'kj_idx', 'ji_idx',
+                'angle_list']
+    new_batch = {key: val for key, val in batch.items()
+                 if key not in bad_keys}
+
+    return new_batch
 
 
 def test_model(
@@ -35,7 +49,7 @@ def test_model(
             batch = batch_to(batch, device)
             target = batch["target"]
             # Compute output
-            output = inference(model, batch, "target", normalizer, device)
+            output = inference(model=model, data=batch, normalizer=normalizer, output_key="target", device=device)
             if device == "cpu":
                 metric_output = model(batch, inference=True)
             else:
@@ -69,7 +83,7 @@ def test_model(
                 target_fidelity = batch["fidelity"].detach().cpu()
                 # Compute output
                 output_fidelity = inference(
-                    model, batch, "fidelity", normalizer, device
+                    model=model, data=batch, normalizer=normalizer, output_key="fidelity", device=device
                 ).data.cpu()
 
                 test_preds_fidelity += [output_fidelity[i].tolist() for i in batch_ids]
@@ -78,7 +92,10 @@ def test_model(
                 ]
 
             metric_out = metrics.avg
-            test_ids += batch["name"].detach().tolist()
+            if isinstance(batch["name"], list):
+                test_ids += batch["name"]
+            else:
+                test_ids += batch["name"].detach().tolist()
 
     return (
         test_preds,
