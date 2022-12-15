@@ -1,4 +1,4 @@
-name: data_total_multifidelity
+name: data_bader
 metrics:
 - name: best_mae_error
   strategy: optimize
@@ -19,22 +19,7 @@ parameters:
     min: 100
     max: 250
   type: int
-- name: loss_coeff_target
-  bounds:
-    min: 0.5
-    max: 2.0
-  type: double
-- name: loss_coeff_fidelity
-  bounds:
-    min: 0.5
-    max: 2.0
-  type: double
 - name: fc_dropout_target
-  bounds:
-    min: 0.0
-    max: 0.4
-  type: double
-- name: fc_dropout_fidelity
   bounds:
     min: 0.0
     max: 0.4
@@ -44,39 +29,19 @@ parameters:
     min: 0.0
     max: 0.4
   type: double
-- name: readout_dropout_fidelity
-  bounds:
-    min: 0.0
-    max: 0.4
-  type: double
 - name: n_h_target
   bounds:
     min: 1
-    max: 2
-  type: int
-- name: n_h_fidelity
-  bounds:
-    min: 2
     max: 4
   type: int
 - name: h_fea_len_target
   bounds:
-    min: 8
-    max: 32
-  type: int
-- name: h_fea_len_fidelity
-  bounds:
-    min: 64
+    min: 16
     max: 256
   type: int
 - name: atom_fea_len_target
   bounds:
-    min: 8
-    max: 32
-  type: int
-- name: atom_fea_len_fidelity
-  bounds:
-    min: 64
+    min: 16
     max: 256
   type: int
 - name: conv_dropout
