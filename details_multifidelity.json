@@ -1,12 +1,13 @@
 {
     "wandb": {
         "project": "per-site learning",
-        "name": "221105-new"
+        "name": "221105-sac-multifidelity"
     },
     "details": {
         "multifidelity": true,
         "output_keys": [
-            "deltaE"
+            "deltaO",
+            "deltaOH"
         ],
         "fidelity_keys": [
             "magmom",
@@ -17,14 +18,14 @@
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "Adam",
-        "lr": 0.00009741731803133933,
-        "weight_decay": 0.0007390763043445946,
+        "lr": 0.009741731803133933,
+        "weight_decay": 0.007390763043445946,
         "sched": "reduce_on_plateau",
-        "val_size": 0.20,
-        "test_size": 0.20
+        "val_size": 0.1,
+        "test_size": 0.1
     },
     "modelparams": {
-        "feat_dim": 118,
+        "feat_dim": 64,
         "activation": "swish",
         "activation_f": "softplus",
         "n_rbf": 21,
@@ -42,19 +43,19 @@
         },
         "n_h": {
             "fidelity": 3,
-            "target": 1
+            "target": 2
         },
         "readout_dropout": {
             "fidelity": 0.3600152546490341,
-            "target": 0.32358465819701987
+            "target": 0.12358465819701987
         },
         "fc_dropout": {
             "fidelity": 0.01410974315801648,
-            "target": 0.047768292303047175
+            "target": 0.17768292303047175
         },
         "n_outputs": {
             "fidelity": 4,
-            "target": 1
+            "target": 2
         },
         "loss_coeff": {
             "fidelity": 1.3497169755876852,
