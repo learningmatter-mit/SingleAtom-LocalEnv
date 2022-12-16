@@ -45,7 +45,7 @@ parser.add_argument(
 parser.add_argument("-b", "--batch_size", default=64, type=int, help="mini-batch size")
 parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
 parser.add_argument("--resume", default="", type=str, help="path to latest checkpoint")
-parser.add_argument("--cuda", default=2, type=int, help="GPU setting")
+parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
 parser.add_argument("--device", default="cuda", type=str, help="cpu or cuda")
 parser.add_argument(
     "--early_stop_val",
@@ -82,7 +82,9 @@ def main(args):
         wandb_config.update(details)
         wandb_config.update(modelparams)
         wandb.init(
-            project=wandb_config["project"], name=wandb_config["name"], config=wandb_config
+            project=wandb_config["project"],
+            name=wandb_config["name"],
+            config=wandb_config,
         )
 
     # Load data
@@ -96,6 +98,7 @@ def main(args):
         except ValueError:
             print("Path to data should be given --data")
         else:
+            print("Start making dataset...")
             if details["multifidelity"]:
                 new_data = convert_site_prop(
                     data,
@@ -134,7 +137,6 @@ def main(args):
     targs = []
     for batch in train_set:
         if batch["target"].shape[1] == 1:
-            print(batch['name'])
         targs.append(batch["target"])
 
     targs = torch.concat(targs)

@@ -109,6 +109,7 @@ def main(args):
         except ValueError:
             print("Path to data should be given --data")
         else:
+            print("Start making dataset...")
             if details["multifidelity"]:
                 new_data = convert_site_prop(
                     data,

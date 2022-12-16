@@ -18,6 +18,7 @@ class Painn(nn.Module):
 
         """
 
+        self.modelparams = modelparams
         super().__init__()
 
         n_rbf = modelparams["n_rbf"]
@@ -29,9 +30,8 @@ class Painn(nn.Module):
         conv_dropout = modelparams.get("conv_dropout", 0)
         readout_dropout = modelparams.get("readout_dropout", 0)
         fc_dropout = modelparams.get("fc_dropout", 0)
-        means = modelparams.get("means")
-        stddevs = modelparams.get("stddves")
-
+        self.means = modelparams.get("means")
+        self.stddevs = modelparams.get("stddevs")
         self.embed_block = EmbeddingBlock(feat_dim=feat_dim)
         self.message_blocks = nn.ModuleList(
             [
@@ -63,13 +63,18 @@ class Painn(nn.Module):
         activation_f = modelparams["activation_f"]
 
         if self.multifidelity:
+            # # Target Embedding
+            # self.embed_block_targ = nn.Linear(
+            #     output_atom_fea_dim["fidelity"] + n_outputs["fidelity"], feat_dim
+            # )
+            # self.embed_targ_act = nn.SiLU()
             self.readout_block_target = ReadoutBlock(
                 feat_dim=feat_dim,
                 output_atom_fea=output_atom_fea_dim["target"],
                 output_keys=["target"],
                 activation=activation,
                 dropout=readout_dropout["target"],
-                scale=True,
+                # scale=True,
             )
             self.readout_block_fidelity = ReadoutBlock(
                 feat_dim=feat_dim,
@@ -88,8 +93,8 @@ class Painn(nn.Module):
                 dropout=fc_dropout["fidelity"],
                 output_key="fidelity",
                 scale=True,
-                means=means,
-                stddevs=stddevs,
+                means=self.means,
+                stddevs=self.stddevs,
             )
             self.fn_target = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim["target"]
@@ -101,8 +106,8 @@ class Painn(nn.Module):
                 dropout=fc_dropout["target"],
                 output_key="target",
                 scale=True,
-                means=means,
-                stddevs=stddevs,
+                means=self.means,
+                stddevs=self.stddevs,
             )
         else:
             self.readout_block = ReadoutBlock(
@@ -121,8 +126,8 @@ class Painn(nn.Module):
                 dropout=fc_dropout["target"],
                 output_key="target",
                 scale=True,
-                means=means,
-                stddevs=stddevs,
+                means=self.means,
+                stddevs=self.stddevs,
             )
 
         self.cutoff = cutoff
@@ -221,8 +226,13 @@ class PainnMultifidelity(Painn):
         for key, val in atomwise_out_fidelity.items():
             fidelity = self.fn_fidelity(val)
             results[key] = fidelity
+        std = self.stddevs["fidelity"].to(s_i)
+        mean = self.means["fidelity"].to(s_i)
+        # new_features = torch.cat((fidelity_normed, s_i), dim=1)
+        # results["target"] = self.fn_target(new_features)
         for key, val in atomwise_out_target.items():
-            new_val = torch.cat((fidelity, val), dim=1)
+            fidelity_normed = (fidelity - mean) / std
+            new_val = torch.cat((fidelity_normed, val), dim=1)
             out = self.fn_target(new_val)
             results[key] = out
 
@@ -233,3 +243,39 @@ class PainnMultifidelity(Painn):
             results = batch_detach(results)
 
         return results
+
+    # def atomwise_pretrained_features(self, batch, xyz=None):
+    #     nbrs, _ = make_directed(batch["nbr_list"])
+    #     nxyz = batch["nxyz"]
+
+    #     if xyz is None:
+    #         xyz = nxyz[:, 1:]
+    #         xyz.requires_grad = True
+
+    #     z_numbers = nxyz[:, 0].long()
+    #     num_atoms = z_numbers.shape[0]
+
+    #     # get r_ij including offsets and excluding
+    #     # anything in the neighbor skin
+    #     self.set_cutoff()
+    #     r_ij, nbrs = get_rij(xyz=xyz, batch=batch, nbrs=nbrs, cutoff=self.cutoff)
+
+    #     s_i = self.embed_targ_act(self.embed_block_targ(batch["new_features"]))
+    #     v_i = torch.zeros(num_atoms, s_i.shape[-1], 3).to(s_i.device)
+    #     # s_i, v_i = self.embed_block(new_fea, nbrs=nbrs, r_ij=r_ij)
+
+    #     for i, message_block in enumerate(self.message_blocks):
+    #         update_block = self.update_blocks[i]
+    #         ds_message, dv_message = message_block(
+    #             s_j=s_i, v_j=v_i, r_ij=r_ij, nbrs=nbrs
+    #         )
+
+    #         s_i = s_i + ds_message
+    #         v_i = v_i + dv_message
+
+    #         ds_update, dv_update = update_block(s_i=s_i, v_i=v_i)
+
+    #         s_i = s_i + ds_update
+    #         v_i = v_i + dv_update
+
+    #     return s_i, xyz, r_ij, nbrs

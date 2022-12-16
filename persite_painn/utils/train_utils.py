@@ -24,7 +24,9 @@ def inference(model, data, normalizer=None, output_key="target", device="cpu"):
         return out
 
 
-def ensemble_inference(model_list, data, output_key, normalizer=None, device="cpu", var=False):
+def ensemble_inference(
+    model_list, data, output_key, normalizer=None, device="cpu", var=False
+):
     """Inference
 
     Args:
@@ -74,7 +76,7 @@ def get_metal_specie(data_id: int, dataset: Dict):
 
 def get_metal_idx_batch(batch):
     metal_bin = []
-    for i, data in enumerate(batch['nxyz']):
+    for i, data in enumerate(batch["nxyz"]):
         if data[0].item() > 20:
             metal_bin.append(i)
 
