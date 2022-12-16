@@ -85,9 +85,14 @@ def main(args):
     wandb_config, details, modelparams, model_type = load_params_from_path(args.details)
     details["epochs"] = args.epochs
     sigoptparams = sigopt.params
-    new_details, new_params = convert_to_sigopt_params(
-        details, modelparams, sigoptparams
-    )
+    if details["multifidelity"]:
+        new_details, new_params = convert_to_sigopt_params(
+            details, modelparams, sigoptparams, fidelity=True,
+        )
+    else:
+        new_details, new_params = convert_to_sigopt_params(
+            details, modelparams, sigoptparams
+        )        
     # wandb Sigopt
     if args.wandb:
         wandb_config.update(new_details)
