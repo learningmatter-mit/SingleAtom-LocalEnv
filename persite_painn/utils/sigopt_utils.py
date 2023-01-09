@@ -13,9 +13,6 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
         sigoptparams.setdefault(
             "fc_dropout_fidelity", modelparams["fc_dropout"]["fidelity"]
         )
-        sigoptparams.setdefault(
-            "loss_coeff_fidelity", modelparams["loss_coeff"]["fidelity"]
-        )
 
     sigoptparams.setdefault("feat_dim", modelparams["feat_dim"])
     sigoptparams.setdefault("n_rbf", modelparams["n_rbf"])
@@ -31,7 +28,6 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
         "readout_dropout_target", modelparams["readout_dropout"]["target"]
     )
     sigoptparams.setdefault("fc_dropout_target", modelparams["fc_dropout"]["target"])
-    sigoptparams.setdefault("loss_coeff_target", modelparams["loss_coeff"]["target"])
 
     # details
     sigoptparams.setdefault("lr", details["lr"])
@@ -67,10 +63,6 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
         converted_params["fc_dropout"] = {
             "target": sigoptparams.fc_dropout_target,
             "fidelity": sigoptparams.fc_dropout_fidelity,
-        }
-        converted_params["loss_coeff"] = {
-            "target": sigoptparams.loss_coeff_target,
-            "fidelity": sigoptparams.loss_coeff_fidelity,
         }
     else:
         converted_params["atom_fea_len"] = {

@@ -6,8 +6,8 @@
     "details": {
         "multifidelity": false,
         "output_keys": [
-            "magmom",
-            "bandcenter"
+            "deltaO",
+            "deltaOH"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
@@ -15,8 +15,8 @@
         "lr": 0.00034039061481105595,
         "weight_decay": 0.0,
         "sched": "reduce_on_plateau",
-        "val_size": 0.2,
-        "test_size": 0.2
+        "val_size": 0.1,
+        "test_size": 0.1
     },
     "modelparams": {
         "feat_dim": 116,

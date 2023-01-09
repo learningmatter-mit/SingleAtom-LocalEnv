@@ -18,7 +18,7 @@
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "Adam",
-        "lr": 0.009741731803133933,
+        "lr": 0.003741731803133933,
         "weight_decay": 0.007390763043445946,
         "sched": "reduce_on_plateau",
         "val_size": 0.1,
@@ -58,8 +58,8 @@
             "target": 2
         },
         "loss_coeff": {
-            "fidelity": 1.3497169755876852,
-            "target": 0.527366300387051
+            "fidelity": 0.5,
+            "target": 1.5
         }
     }
 }

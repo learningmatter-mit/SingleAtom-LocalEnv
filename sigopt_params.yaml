@@ -1,4 +1,4 @@
-name: data_total_multifidelity
+name: sac_multifidelity
 metrics:
 - name: best_mae_error
   strategy: optimize
@@ -16,19 +16,9 @@ parameters:
   type: double
 - name: epochs
   bounds:
-    min: 100
-    max: 250
+    min: 60
+    max: 200
   type: int
-- name: loss_coeff_target
-  bounds:
-    min: 0.5
-    max: 2.0
-  type: double
-- name: loss_coeff_fidelity
-  bounds:
-    min: 0.5
-    max: 2.0
-  type: double
 - name: fc_dropout_target
   bounds:
     min: 0.0
@@ -52,7 +42,7 @@ parameters:
 - name: n_h_target
   bounds:
     min: 1
-    max: 2
+    max: 3
   type: int
 - name: n_h_fidelity
   bounds:
@@ -72,7 +62,7 @@ parameters:
 - name: atom_fea_len_target
   bounds:
     min: 8
-    max: 32
+    max: 64
   type: int
 - name: atom_fea_len_fidelity
   bounds:
@@ -104,4 +94,4 @@ parameters:
     min: 3
     max: 5
   type: int
-budget: 40
+budget: 50
