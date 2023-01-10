@@ -68,7 +68,7 @@ UNITS = {
 }
 
 
-def plot_hexbin(
+def plot_scatter(
     targs,
     preds,
     prop_key: str,
@@ -80,12 +80,9 @@ def plot_hexbin(
     scale="linear",
     inc_factor=1.1,
     dec_factor=0.9,
-    bins=None,
-    plot_helper_lines=False,
-    cmap="viridis",
+    edgecolor="#A7441C",
+    style='scifig'
 ):
-    # matplotlib.rcParams.update({"font.size": 18})
-
     new_targ = []
     new_pred = []
     if test_ids is None:
@@ -139,96 +136,216 @@ def plot_hexbin(
                 new_targ += dictionary[key]
                 new_pred += pred_dictionary[key]
 
-    fig, ax = plt.subplots(figsize=(6, 6))
+    with plt.style.context(style):
+        fig, ax = plt.subplots()
+        ax.scatter(new_targ, new_pred, facecolors='none', edgecolors=edgecolor)
+        mae = mean_absolute_error(new_targ, new_pred)
+        r, _ = pearsonr(new_targ, new_pred)
 
-    mae = mean_absolute_error(new_targ, new_pred)
-    r, _ = pearsonr(new_targ, new_pred)
+        if scale == "log":
+            new_pred = np.abs(new_pred) + 1e-8
+            new_targ = np.abs(new_targ) + 1e-8
 
-    if scale == "log":
-        new_pred = np.abs(new_pred) + 1e-8
-        new_targ = np.abs(new_targ) + 1e-8
+        lim_min = min(np.min(new_pred), np.min(new_targ))
+        if lim_min < 0:
+            if lim_min > -0.1:
+                lim_min = -0.1
+            lim_min *= inc_factor
+        else:
+            if lim_min < 0.1:
+                lim_min = -0.1
+            lim_min *= dec_factor
+        lim_max = max(np.max(new_pred), np.max(new_targ))
+        if lim_max <= 0:
+            if lim_max > -0.1:
+                lim_max = 0.2
+            lim_max *= dec_factor
+        else:
+            if lim_max < 0.1:
+                lim_max = 0.25
+            lim_max *= inc_factor
 
-    lim_min = min(np.min(new_pred), np.min(new_targ))
-    if lim_min < 0:
-        if lim_min > -0.1:
-            lim_min = -0.1
-        lim_min *= inc_factor
+        ax.set_xlim(lim_min, lim_max)
+        ax.set_ylim(lim_min, lim_max)
+        ax.set_aspect("equal")
+
+
+        ax.axline((0, 0), (1, 1), color="#000000", zorder=-1, linewidth=0.5)
+        ax.set_title(title, fontsize=8)
+        ax.set_ylabel("Predicted %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
+        ax.set_xlabel("Calculated %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
+
+        ax.annotate(
+            "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, UNITS[prop_key]),
+            (0.03, 0.88),
+            xycoords="axes fraction",
+            fontsize=6,
+        )
+
+    return fig, ax, r, mae
+
+
+def plot_hexbin(
+    targs,
+    preds,
+    prop_key: str,
+    target_index: Optional[int] = None,
+    test_ids: Optional[List] = None,
+    structures: Optional[Dict[int, Structure]] = None,
+    Z_range: Optional[List] = None,
+    title="",
+    scale="linear",
+    inc_factor=1.1,
+    dec_factor=0.9,
+    bins=None,
+    plot_helper_lines=False,
+    cmap="viridis",
+    style='scifig'
+):
+    new_targ = []
+    new_pred = []
+    if test_ids is None:
+        new_targ = targs
+        new_pred = preds
     else:
-        if lim_min < 0.1:
-            lim_min = -0.1
-        lim_min *= dec_factor
-    lim_max = max(np.max(new_pred), np.max(new_targ))
-    if lim_max <= 0:
-        if lim_max > -0.1:
-            lim_max = 0.2
-        lim_max *= dec_factor
-    else:
-        if lim_max < 0.1:
-            lim_max = 0.25
-        lim_max *= inc_factor
+        pred_dictionary: Dict[int, List] = {}
+        dictionary: Dict[int, List] = {}
+        for index in tqdm(range(len(test_ids))):
+            id_ = test_ids[index]
+            structure = structures.get(id_)
+            elems = [Element(x.symbol).Z for x in structure.species]
 
-    ax.set_xlim(lim_min, lim_max)
-    ax.set_ylim(lim_min, lim_max)
-    ax.set_aspect("equal")
+            pred = preds[index]
+            targ = targs[index]
 
-    # ax.plot((lim_min, lim_max),
-    #        (lim_min, lim_max),
-    #        color='#000000',
-    #        zorder=-1,
-    #        linewidth=0.5)
-    ax.axline((0, 0), (1, 1), color="#000000", zorder=-1, linewidth=0.5)
+            # get dictionary
+            for i in range(len(elems)):
 
-    hb = ax.hexbin(
-        new_targ,
-        new_pred,
-        cmap=cmap,
-        gridsize=60,
-        bins=bins,
-        mincnt=1,
-        edgecolors=None,
-        linewidths=(0.1,),
-        xscale=scale,
-        yscale=scale,
-        extent=(lim_min, lim_max, lim_min, lim_max),
-        norm=matplotlib.colors.LogNorm(),
-    )
+                elem = elems[i]
+                y = targ[i][target_index]
 
-    cb = fig.colorbar(hb, shrink=0.822)
-    cb.set_label("Count")
+                if elem in dictionary:
+                    array = dictionary[elem]
+                    array.append(y)
+                    dictionary[elem] = array
 
-    if plot_helper_lines:
+                else:
+                    dictionary[elem] = [y]
 
-        if scale == "linear":
-            x = np.linspace(lim_min, lim_max, 50)
-            y_up = x + mae
-            y_down = x - mae
+            # get pred_dictionary
+            for i in range(len(elems)):
 
-        elif scale == "log":
-            x = np.logspace(np.log10(lim_min), np.log10(lim_max), 50)
+                elem = elems[i]
+                y = pred[i][target_index]
 
-            # one order of magnitude
-            y_up = np.maximum(x + 1e-2, x * 10)
-            y_down = np.minimum(np.maximum(1e-8, x - 1e-2), x / 10)
+                if elem in pred_dictionary:
+                    array = pred_dictionary[elem]
+                    array.append(y)
+                    pred_dictionary[elem] = array
 
-            # one kcal/mol/Angs
-            y_up = x + 1
-            y_down = np.maximum(1e-8, x - 1)
+                else:
+                    pred_dictionary[elem] = [y]
 
-        for y in [y_up, y_down]:
-            ax.plot(x, y, color="#000000", zorder=2, linewidth=0.5, linestyle="--")
+        if Z_range is None:
+            for key in list(dictionary.keys()):
+                new_targ += dictionary[key]
+                new_pred += pred_dictionary[key]
+        else:        
+            for key in Z_range:
+                new_targ += dictionary[key]
+                new_pred += pred_dictionary[key]
+    # Use style in matplotlib.style.available
+    with plt.style.context(style):
+        fig, ax = plt.subplots()
 
-    ax.set_title(title, fontsize=14)
-    ax.set_ylabel("Predicted %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=12)
-    ax.set_xlabel("Calculated %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=12)
+        mae = mean_absolute_error(new_targ, new_pred)
+        r, _ = pearsonr(new_targ, new_pred)
 
-    ax.annotate(
-        "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, UNITS[prop_key]),
-        (0.03, 0.88),
-        xycoords="axes fraction",
-        fontsize=12,
-    )
+        if scale == "log":
+            new_pred = np.abs(new_pred) + 1e-8
+            new_targ = np.abs(new_targ) + 1e-8
 
-    return r, mae, ax, hb
+        lim_min = min(np.min(new_pred), np.min(new_targ))
+        if lim_min < 0:
+            if lim_min > -0.1:
+                lim_min = -0.1
+            lim_min *= inc_factor
+        else:
+            if lim_min < 0.1:
+                lim_min = -0.1
+            lim_min *= dec_factor
+        lim_max = max(np.max(new_pred), np.max(new_targ))
+        if lim_max <= 0:
+            if lim_max > -0.1:
+                lim_max = 0.2
+            lim_max *= dec_factor
+        else:
+            if lim_max < 0.1:
+                lim_max = 0.25
+            lim_max *= inc_factor
+
+        ax.set_xlim(lim_min, lim_max)
+        ax.set_ylim(lim_min, lim_max)
+        ax.set_aspect("equal")
+
+        # ax.plot((lim_min, lim_max),
+        #        (lim_min, lim_max),
+        #        color='#000000',
+        #        zorder=-1,
+        #        linewidth=0.5)
+        ax.axline((0, 0), (1, 1), color="#000000", zorder=-1, linewidth=0.5)
+
+        hb = ax.hexbin(
+            new_targ,
+            new_pred,
+            cmap=cmap,
+            gridsize=60,
+            bins=bins,
+            mincnt=1,
+            edgecolors=None,
+            linewidths=(0.1,),
+            xscale=scale,
+            yscale=scale,
+            extent=(lim_min, lim_max, lim_min, lim_max),
+            norm=matplotlib.colors.LogNorm(),
+        )
+
+        cb = fig.colorbar(hb, shrink=0.822)
+        cb.set_label("Count")
+
+        if plot_helper_lines:
+
+            if scale == "linear":
+                x = np.linspace(lim_min, lim_max, 50)
+                y_up = x + mae
+                y_down = x - mae
+
+            elif scale == "log":
+                x = np.logspace(np.log10(lim_min), np.log10(lim_max), 50)
+
+                # one order of magnitude
+                y_up = np.maximum(x + 1e-2, x * 10)
+                y_down = np.minimum(np.maximum(1e-8, x - 1e-2), x / 10)
+
+                # one kcal/mol/Angs
+                y_up = x + 1
+                y_down = np.maximum(1e-8, x - 1)
+
+            for y in [y_up, y_down]:
+                ax.plot(x, y, color="#000000", zorder=2, linewidth=0.5, linestyle="--")
+
+        ax.set_title(title, fontsize=8)
+        ax.set_ylabel("Predicted %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
+        ax.set_xlabel("Calculated %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
+
+        ax.annotate(
+            "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, UNITS[prop_key]),
+            (0.03, 0.88),
+            xycoords="axes fraction",
+            fontsize=6,
+        )
+
+    return fig, ax, r, mae, hb
 
 
 def flatten(t):
@@ -239,15 +356,16 @@ def plot_violin(
     targs,
     preds,
     target_index: int,
+    prop_key: str,
     test_ids: List,
     structures: Structure,
-    prop_key:str,
     color1: str = "#679289",
     color2: str = "#F4C095",
     Z_range=[22, 30],
+    legend=True,
     legend_loc="lower left",
+    style='scifig'
 ):
-    matplotlib.rcParams.update({"font.size": 18})
 
     pred_dictionary = {}
     dictionary = {}
@@ -312,25 +430,32 @@ def plot_violin(
     df["hue"] = hues
 
     my_pal = {"targ": color1, "pred": color2}
+    with plt.style.context(style):
+        f = plt.figure()
+        ax = sns.violinplot(
+            x="Z",
+            y=prop_key,
+            hue="hue",
+            data=df,
+            palette=my_pal,
+            split=True,
+            inner=None,
+            linewidth=1,
+        )
 
-    ax = sns.violinplot(
-        x="Z",
-        y=prop_key,
-        hue="hue",
-        data=df,
-        palette=my_pal,
-        split=True,
-        inner=None,
-        linewidth=1,
-    )
+        # plt.ylim([-0.1,5.2])'
 
-    # plt.ylim([-0.1,5.2])
-    plt.legend(loc=legend_loc)
-    ax.set_ylabel("%s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=12)
-    xticks = [Element.from_Z(int(text._text)).symbol for text in ax.get_xticklabels()]
-    ax.set_xticklabels(xticks)
+        plt.legend(loc=legend_loc, fontsize=6)
+        ax.set_ylabel("%s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
+        ax.set_xlabel("")
+        ax.tick_params(axis='x',labelsize=8)
+        ax.tick_params(axis='y',labelsize=6)
+        xticks = [Element.from_Z(int(text._text)).symbol for text in ax.get_xticklabels()]
+        ax.set_xticklabels(xticks)
+        if not legend:
+            ax.get_legend().remove()
 
-    return ax
+    return f, ax
 
 
 """
