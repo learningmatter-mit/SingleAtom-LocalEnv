@@ -136,7 +136,6 @@ def main(args):
     normalizer = {}
     targs = []
     for batch in train_set:
-        if batch["target"].shape[1] == 1:
         targs.append(batch["target"])
 
     targs = torch.concat(targs)
