@@ -9,6 +9,7 @@ from sklearn.cluster import DBSCAN, KMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from tqdm import tqdm
+from typing import Optional
 
 from persite_painn.nn import load_model
 from persite_painn.utils import Normalizer, ensemble_inference, get_metal_idx
@@ -128,20 +129,30 @@ class ActiveLearning:
 
         return diversity, diversity_embedding_values, reduced_embedding, cluster_label
 
-    def get_next_data(self, num_data, save=True):
+    def get_next_data(self, num_data, save=True, existing_key_bin: Optional[str]=None):
         diversity_cluster_num = len(np.unique(self.cluster_label))
         max_cluster_num = (num_data // diversity_cluster_num) * 2  # There can be diatomic sites
         key_bin = []
         cluster_bin = [0 for i in range(diversity_cluster_num)]
         total_key_bin = list(self.uncertainty.keys())
+        if existing_key_bin is not None:
+            existing_key_bin_data = pkl.load(open(existing_key_bin, 'rb'))
+            existing_keys = list(existing_key_bin_data.values())
+        else:
+            existing_keys = []
         success = 0
         while success <= num_data:
             key = random.choice(total_key_bin)
             cluster_bin, check_diversity = check_max_cluster(cluster_bin, max_cluster_num, self.diversity[key])
             if self.uncertainty[key] >= self.uncertainty_threshold or check_diversity:
-                key_bin.append(key)
-                total_key_bin.remove(key)
-                success += 1
+                if existing_key_bin is not None and key not in existing_keys:
+                    key_bin.append(key)
+                    total_key_bin.remove(key)
+                    success += 1
+                else:
+                    key_bin.append(key)
+                    total_key_bin.remove(key)
+                    success += 1                    
             check = [False for i in range(len(cluster_bin))]
             for i, val in enumerate(cluster_bin):
                 if val >= max_cluster_num:
