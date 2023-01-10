@@ -44,16 +44,17 @@ def ensemble_inference(
         model.eval()
         out = model(data, inference=True)[output_key]
         if normalizer is None:
-            output_bin.append(out).unsqueeze(1)
+            output_bin.append(out.unsqueeze(1))
         else:
             out = normalizer[output_key].denorm(out).unsqueeze(1)
             output_bin.append(out)
-    if var:
-        output_tensor = torch.var(torch.stack(output_bin, dim=1), dim=1).squeeze(1)
-    else:
-        output_tensor = torch.mean(torch.stack(output_bin, dim=1), dim=1).squeeze(1)
 
-    return output_tensor
+    output_tensor = torch.mean(torch.stack(output_bin, dim=1), dim=1).squeeze(1)
+    if var:
+        output_tensor_var = torch.var(torch.stack(output_bin, dim=1), dim=1).squeeze(1)
+        return output_tensor, output_tensor_var
+    else:
+        return output_tensor
 
 
 def get_metal_idx(data_id: int, dataset: Dict):
