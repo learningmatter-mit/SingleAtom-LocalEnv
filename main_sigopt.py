@@ -306,6 +306,10 @@ def main(args):
 
     early_stop = [args.early_stop_val, args.early_stop_train]
 
+    # for i, param in enumerate(model.fn_target.conv_to_fc.parameters()):
+    #     if i == 0:
+    #         param.requires_grad = False
+
     # set Trainer
     trainer = Trainer(
         model_path=args.savedir,
