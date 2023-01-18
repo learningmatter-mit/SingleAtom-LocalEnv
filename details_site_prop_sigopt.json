@@ -6,7 +6,10 @@
     "details": {
         "multifidelity": false,
         "output_keys": [
-            "charge"
+            "magmom",
+            "bandfilling",
+            "bandcenter",
+            "bandwidth"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
@@ -42,7 +45,7 @@
             "target": 0.05
         },
         "n_outputs": {
-            "target": 1
+            "target": 4
         },
         "loss_coeff": {
             "target": 1.0
