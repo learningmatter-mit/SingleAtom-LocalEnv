@@ -69,4 +69,4 @@ parameters:
     min: 3
     max: 5
   type: int
-budget: 40
+budget: 30

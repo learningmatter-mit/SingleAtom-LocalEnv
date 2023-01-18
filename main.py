@@ -287,7 +287,7 @@ def main(args):
     early_stop = [args.early_stop_val, args.early_stop_train]
 
     # Turn off gradient
-    # for i, param in enumerate(model.fn_target.conv_to_fc.parameters()):
+    # for i, param in enumerate(model.readout_block_target.parameters()):
     #     if i == 0:
     #         param.requires_grad = False
 
