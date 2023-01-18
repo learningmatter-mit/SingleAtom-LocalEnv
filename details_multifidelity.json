@@ -12,54 +12,53 @@
         "fidelity_keys": [
             "magmom",
             "bandfilling",
-            "bandcenter",
-            "bandwidth"
+            "bandcenter"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "Adam",
-        "lr": 0.003741731803133933,
-        "weight_decay": 0.007390763043445946,
+        "lr": 0.001,
+        "weight_decay": 0.0,
         "sched": "reduce_on_plateau",
         "val_size": 0.1,
         "test_size": 0.1
     },
     "modelparams": {
-        "feat_dim": 64,
-        "activation": "swish",
-        "activation_f": "softplus",
-        "n_rbf": 21,
-        "cutoff": 5.0994089845653665,
-        "num_conv": 4,
+        "feat_dim": 98,
+        "activation": "learnable_swish",
         "learnable_k": true,
-        "conv_dropout": 0.1438037910851953,
+        "activation_f": "softplus",
+        "n_rbf": 20,
+        "cutoff": 5.0,
+        "num_conv": 4,
+        "conv_dropout": 0.10,
         "atom_fea_len": {
-            "fidelity": 195,
-            "target": 27
+            "atom_emb": 128,
+            "target": 37
         },
         "h_fea_len": {
             "fidelity": 256,
-            "target": 20
+            "target": 29
         },
         "n_h": {
-            "fidelity": 3,
+            "fidelity": 2,
             "target": 2
         },
         "readout_dropout": {
-            "fidelity": 0.3600152546490341,
-            "target": 0.12358465819701987
+            "atom_emb": 0.25,
+            "target": 0.05
         },
         "fc_dropout": {
-            "fidelity": 0.01410974315801648,
-            "target": 0.17768292303047175
+            "fidelity": 0.0,
+            "target": 0.05
         },
         "n_outputs": {
-            "fidelity": 4,
+            "fidelity": 3,
             "target": 2
         },
         "loss_coeff": {
-            "fidelity": 0.5,
-            "target": 1.5
+            "fidelity": 1.0,
+            "target": 0.0
         }
     }
 }

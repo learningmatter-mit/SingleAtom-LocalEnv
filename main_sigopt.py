@@ -199,8 +199,8 @@ def main(args):
     optimizer = get_optimizer(
         optim=details["optim"],
         trainable_params=trainable_params,
-        lr=sigopt.params.lr,
-        weight_decay=sigopt.params.weight_decay,
+        lr=new_details["lr"],
+        weight_decay=new_details["weight_decay"],
     )
 
     # optionally resume from a checkpoint
@@ -258,7 +258,7 @@ def main(args):
 
     # Set scheduler Sigopt
     scheduler = get_scheduler(
-        sched=details["sched"], optimizer=optimizer, epochs=sigopt.params.epochs
+        sched=details["sched"], optimizer=optimizer, epochs=new_details["epochs"]
     )
     # scheduler = get_scheduler(
     #     sched=details["sched"], optimizer=optimizer, epochs=args.epochs

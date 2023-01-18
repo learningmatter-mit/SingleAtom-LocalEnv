@@ -1,45 +1,45 @@
 {
     "wandb": {
         "project": "per-site learning (perov)",
-        "name": "phonon learning"
+        "name": "magmom-bandcenter-surf learning"
     },
     "details": {
         "multifidelity": false,
         "output_keys": [
-            "phononbandcenter"
+            "bandcenter"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "Adam",
-        "lr": 0.00014039061481105595,
-        "weight_decay": 0.00,
+        "lr": 0.002,
+        "weight_decay": 0.0,
         "sched": "reduce_on_plateau",
-        "val_size": 0.2,
-        "test_size": 0.2
+        "val_size": 0.1,
+        "test_size": 0.1
     },
     "modelparams": {
-        "feat_dim": 116,
+        "feat_dim": 98,
         "activation": "learnable_swish",
         "learnable_k": true,
-        "activation_f": "softplus",
-        "n_rbf": 15,
-        "cutoff": 5.5,
-        "num_conv": 3,
-        "conv_dropout": 0.0,
+        "activation_f": "swish",
+        "n_rbf": 22,
+        "cutoff": 4.0,
+        "num_conv": 4,
+        "conv_dropout": 0.15,
         "atom_fea_len": {
-            "target": 131
+            "target": 128
         },
         "h_fea_len": {
-            "target": 144
+            "target": 256
         },
         "n_h": {
             "target": 2
         },
         "readout_dropout": {
-            "target": 0.351578822886862
+            "target": 0.2964440824923512
         },
         "fc_dropout": {
-            "target": 0.08425018107490714
+            "target": 0.08124243479440758
         },
         "n_outputs": {
             "target": 1

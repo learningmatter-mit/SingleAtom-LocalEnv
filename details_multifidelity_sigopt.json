@@ -1,64 +1,64 @@
 {
     "wandb": {
-        "project": "per-site learning sigopt",
-        "name": "sigopt 1108"
+        "project": "per-site learning",
+        "name": "221105-sac-multifidelity"
     },
     "details": {
         "multifidelity": true,
         "output_keys": [
-            "deltaE"
+            "deltaO",
+            "deltaOH"
         ],
         "fidelity_keys": [
             "magmom",
             "bandfilling",
-            "bandcenter",
-            "bandwidth"
+            "bandcenter"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "Adam",
-        "lr": 0.000491,
-        "weight_decay": 0.01486,
+        "lr": 0.001,
+        "weight_decay": 0.0,
         "sched": "reduce_on_plateau",
-        "val_size": 0.2,
-        "test_size": 0.2
+        "val_size": 0.1,
+        "test_size": 0.1
     },
     "modelparams": {
-        "feat_dim": 115,
-        "activation": "swish",
-        "activation_f": "softplus",
-        "n_rbf": 24,
-        "cutoff": 6.6315,
-        "num_conv": 3,
+        "feat_dim": 98,
+        "activation": "learnable_swish",
         "learnable_k": true,
-        "conv_dropout": 0.1362,
+        "activation_f": "softplus",
+        "n_rbf": 20,
+        "cutoff": 5.0,
+        "num_conv": 4,
+        "conv_dropout": 0.10,
         "atom_fea_len": {
-            "fidelity": 104,
-            "target": 83
+            "atom_emb": 128,
+            "target": 37
         },
         "h_fea_len": {
-            "fidelity": 200,
-            "target": 16
+            "fidelity": 256,
+            "target": 29
         },
         "n_h": {
-            "fidelity": 4,
+            "fidelity": 2,
             "target": 2
         },
         "readout_dropout": {
-            "fidelity": 0.2518,
-            "target": 0.3
+            "atom_emb": 0.25,
+            "target": 0.05
         },
         "fc_dropout": {
-            "fidelity": 0.0151,
-            "target": 0.07778
+            "fidelity": 0.0,
+            "target": 0.05
         },
         "n_outputs": {
-            "fidelity": 4,
-            "target": 1
+            "fidelity": 3,
+            "target": 2
         },
         "loss_coeff": {
-            "fidelity": 1.222,
-            "target": 0.8252
+            "fidelity": 1.0,
+            "target": 0.0
         }
     }
 }

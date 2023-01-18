@@ -76,15 +76,7 @@ class Painn(nn.Module):
                 output_keys=["target"],
                 activation=activation,
                 dropout=readout_dropout["target"],
-                # scale=True,
             )
-            # self.readout_block_fidelity = ReadoutBlock(
-            #     feat_dim=output_atom_fea_dim["atom_emb"],
-            #     output_atom_fea=output_atom_fea_dim["fidelity"],
-            #     output_keys=["fidelity"],
-            #     activation=activation,
-            #     dropout=readout_dropout["fidelity"],
-            # )
 
             self.fn_fidelity = FullyConnected(
                 output_atom_fea_dim=output_atom_fea_dim["atom_emb"],
@@ -230,13 +222,10 @@ class PainnMultifidelity(Painn):
         # fidelity
         fidelity = self.fn_fidelity(atomwise_out["atom_emb"])
         results["fidelity"] = fidelity
-        # for key, val in atomwise_out_fidelity.items():
-        #     fidelity = self.fn_fidelity(val)
-        #     results[key] = fidelity
+
         std = self.stddevs["fidelity"].to(s_i)
         mean = self.means["fidelity"].to(s_i)
-        # new_features = torch.cat((fidelity_normed, s_i), dim=1)
-        # results["target"] = self.fn_target(new_features)
+
         for key, val in atomwise_out_target.items():
             fidelity_normed = (fidelity - mean) / std
             new_val = torch.cat((fidelity_normed, val), dim=1)
