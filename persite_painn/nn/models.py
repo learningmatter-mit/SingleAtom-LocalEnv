@@ -63,29 +63,31 @@ class Painn(nn.Module):
         activation_f = modelparams["activation_f"]
 
         if self.multifidelity:
-            # # Target Embedding
-            # self.embed_block_targ = nn.Linear(
-            #     output_atom_fea_dim["fidelity"] + n_outputs["fidelity"], feat_dim
-            # )
-            # self.embed_targ_act = nn.SiLU()
-            self.readout_block_target = ReadoutBlock(
+            self.readout_block = ReadoutBlock(
                 feat_dim=feat_dim,
+                output_atom_fea=output_atom_fea_dim["atom_emb"],
+                output_keys=["atom_emb"],
+                activation=activation,
+                dropout=readout_dropout["atom_emb"],
+            )
+            self.readout_block_target = ReadoutBlock(
+                feat_dim=output_atom_fea_dim["atom_emb"],
                 output_atom_fea=output_atom_fea_dim["target"],
                 output_keys=["target"],
                 activation=activation,
                 dropout=readout_dropout["target"],
                 # scale=True,
             )
-            self.readout_block_fidelity = ReadoutBlock(
-                feat_dim=feat_dim,
-                output_atom_fea=output_atom_fea_dim["fidelity"],
-                output_keys=["fidelity"],
-                activation=activation,
-                dropout=readout_dropout["fidelity"],
-            )
+            # self.readout_block_fidelity = ReadoutBlock(
+            #     feat_dim=output_atom_fea_dim["atom_emb"],
+            #     output_atom_fea=output_atom_fea_dim["fidelity"],
+            #     output_keys=["fidelity"],
+            #     activation=activation,
+            #     dropout=readout_dropout["fidelity"],
+            # )
 
             self.fn_fidelity = FullyConnected(
-                output_atom_fea_dim=output_atom_fea_dim["fidelity"],
+                output_atom_fea_dim=output_atom_fea_dim["atom_emb"],
                 h_fea_len=h_fea_len["fidelity"],
                 n_h=n_h["fidelity"],
                 activation=activation_f,
@@ -219,13 +221,18 @@ class PainnMultifidelity(Painn):
     def run(self, batch, xyz=None, inference=False):
 
         s_i, xyz, _, _ = self.atomwise(batch=batch, xyz=xyz)
+        atomwise_out = self.readout_block(s_i=s_i)
 
-        atomwise_out_fidelity = self.readout_block_fidelity(s_i=s_i)
-        atomwise_out_target = self.readout_block_target(s_i=s_i)
+        # atomwise_out_fidelity = self.readout_block_fidelity(s_i=atom_emb)
+        atomwise_out_target = self.readout_block_target(s_i=atomwise_out["atom_emb"])
         results = {}
-        for key, val in atomwise_out_fidelity.items():
-            fidelity = self.fn_fidelity(val)
-            results[key] = fidelity
+        
+        # fidelity
+        fidelity = self.fn_fidelity(atomwise_out["atom_emb"])
+        results["fidelity"] = fidelity
+        # for key, val in atomwise_out_fidelity.items():
+        #     fidelity = self.fn_fidelity(val)
+        #     results[key] = fidelity
         std = self.stddevs["fidelity"].to(s_i)
         mean = self.means["fidelity"].to(s_i)
         # new_features = torch.cat((fidelity_normed, s_i), dim=1)

@@ -1,9 +1,10 @@
 import torch
 import json
 import numpy as np
-from nff.nn.activations import shifted_softplus, Swish, LearnableSwish
+from persite_painn.nn.activations import shifted_softplus, Swish, LearnableSwish
 
-from nff.nn.layers import Dense
+from persite_painn.nn.layers import Dense
+from typing import Dict
 
 layer_types = {
     "linear": torch.nn.Linear,
@@ -113,3 +114,37 @@ def get_rij(xyz, batch, nbrs, cutoff):
     nbrs = nbrs[use_nbrs]
 
     return r_ij, nbrs
+
+
+def get_metal_filter(data):
+    atom_number_bin = data["nxyz"][:, 0].tolist()
+    return [val > 21 for val in atom_number_bin]
+
+
+def get_metal_idx(data_id: int, dataset: Dict):
+    struc = dataset[data_id]
+    metal_bin = []
+    for i, specie in enumerate(struc.species):
+        if specie.Z > 20:
+            metal_bin.append(i)
+    return metal_bin
+
+
+def get_metal_idx_batch(batch):
+    metal_bin = []
+    for i, data in enumerate(batch["nxyz"]):
+        if data[0].item() > 20:
+            metal_bin.append(i)
+
+    return metal_bin
+
+
+def get_metal_specie(data_id: int, dataset: Dict):
+    struc = dataset[data_id]
+    metal_bin = []
+    for _, specie in enumerate(struc.species):
+        if specie.Z > 20:
+            metal_bin.append(specie.Z)
+    return metal_bin
+
+

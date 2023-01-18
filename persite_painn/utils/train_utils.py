@@ -57,33 +57,6 @@ def ensemble_inference(
         return output_tensor
 
 
-def get_metal_idx(data_id: int, dataset: Dict):
-    struc = dataset[data_id]
-    metal_bin = []
-    for i, specie in enumerate(struc.species):
-        if specie.Z > 20:
-            metal_bin.append(i)
-    return metal_bin
-
-
-def get_metal_specie(data_id: int, dataset: Dict):
-    struc = dataset[data_id]
-    metal_bin = []
-    for _, specie in enumerate(struc.species):
-        if specie.Z > 20:
-            metal_bin.append(specie.Z)
-    return metal_bin
-
-
-def get_metal_idx_batch(batch):
-    metal_bin = []
-    for i, data in enumerate(batch["nxyz"]):
-        if data[0].item() > 20:
-            metal_bin.append(i)
-
-    return metal_bin
-
-
 TESNOR = torch.Tensor
 
 
