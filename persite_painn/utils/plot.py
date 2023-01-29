@@ -47,6 +47,7 @@ PROPERTIES = {
     "acid_stab": "Electrochemical stability",
     "bandcenter": "DOS band center",
     "bandwidth": "DOS band width",
+    "bandfilling": "Amount of Bandfilling",
     "phonon": "Atomic vibration frequency",
     "bader": "Bader charge",
 }
@@ -64,7 +65,8 @@ UNITS = {
     "bandcenter": "eV",
     "bandwidth": "eV",
     "phonon": "THz",
-    "bader": "$q_e$",
+    "bandfilling": "$q_e$",
+    "bader": "$q_e$"
 }
 
 
@@ -167,8 +169,9 @@ def plot_scatter(
 
         ax.set_xlim(lim_min, lim_max)
         ax.set_ylim(lim_min, lim_max)
+        ax.set_xticks(ax.get_yticks())
+        ax.set_yticks(ax.get_yticks())
         ax.set_aspect("equal")
-
 
         ax.axline((0, 0), (1, 1), color="#000000", zorder=-1, linewidth=0.5)
         ax.set_title(title, fontsize=8)
@@ -286,6 +289,8 @@ def plot_hexbin(
 
         ax.set_xlim(lim_min, lim_max)
         ax.set_ylim(lim_min, lim_max)
+        ax.set_xticks(ax.get_yticks())
+        ax.set_yticks(ax.get_yticks())
         ax.set_aspect("equal")
 
         # ax.plot((lim_min, lim_max),
