@@ -1,14 +1,24 @@
 import numpy as np
 from tqdm import tqdm
 
+AVAIL_KEYS = ["magmom", "bandfilling", "bandcenter", "atomiccharges","deltaE", "deltaO", "deltaOH", "deltaOOH"]
+
 
 def convert_site_prop(data, output_keys, fidelity_keys=None):
     data_converted = {}
     print("Preprocessing...")
     if fidelity_keys is not None:
         print(f"Target Keys: {output_keys} and Fidelity Keys: {fidelity_keys}.")
+        check_keys = output_keys + fidelity_keys
+        for key in check_keys:
+            if key not in AVAIL_KEYS:
+                raise NotImplementedError(f"{key} is not an available key")
     else:
         print(f"Target Keys: {output_keys}.")
+        for key in output_keys:
+            if key not in AVAIL_KEYS:
+                raise NotImplementedError(f"{key} is not an available key")
+
     for key, val in tqdm(data.items()):
         target_key_bin = []
         fidelity_key_bin = []
