@@ -8,8 +8,8 @@ def inference(model, data, normalizer=None, output_key="target", device="cpu"):
     Args:
             model (Torch.nn.Module): torch model
             data (Torch.nn.Data): torch Data
-            output_key (str): output key
             normalizer (Dict): Information for normalization
+            output_key (str): output key
 
     Returns:
             out (torch.Tensor): inference tensor
@@ -25,7 +25,7 @@ def inference(model, data, normalizer=None, output_key="target", device="cpu"):
 
 
 def ensemble_inference(
-    model_list, data, output_key, normalizer=None, device="cpu", var=False
+    model_list, data, normalizer=None, output_key="target", device="cpu", var=False
 ):
     """Inference
 
@@ -63,10 +63,10 @@ TESNOR = torch.Tensor
 class Normalizer:
     """Normalize a Tensor and restore it later."""
 
-    def __init__(self, inputs: Union[TESNOR, Dict]):
+    def __init__(self, inputs: Union[TESNOR, Dict], key: str):
         """tensor is taken as a sample to calculate the mean and std"""
         if isinstance(inputs, TESNOR):
-            self.mean, self.std, self.max, self.min, self.sum = self.preprocess(inputs)
+            self.mean, self.std, self.max, self.min, self.sum = self.preprocess(inputs, key)
 
         elif isinstance(inputs, Dict):
             self.load_state_dict(inputs)
@@ -109,7 +109,7 @@ class Normalizer:
         self.min = state_dict["min"]
         self.sum = state_dict["sum"]
 
-    def preprocess(self, tensor):
+    def preprocess(self, tensor, key):
         """
         Preprocess the tensor:
         (1) filter nan
@@ -118,6 +118,7 @@ class Normalizer:
         if tensor.dim() == 1:
             valid_index = torch.bitwise_not(torch.isnan(tensor))
             filtered_targs = tensor[valid_index]
+            print(f"Number of {key} for normlization: {filtered_targs.shape[0]}")
             mean = torch.mean(filtered_targs)
             std = torch.std(filtered_targs)
             _max = torch.max(filtered_targs)
@@ -130,9 +131,10 @@ class Normalizer:
             _min_bin = []
             _sum_bin = []
             transposed = torch.transpose(tensor, dim0=0, dim1=1)
-            for values in transposed:
+            for i, values in enumerate(transposed):
                 valid_index = torch.bitwise_not(torch.isnan(values))
                 filtered_targs = values[valid_index]
+                print(f"Number of {key}_{i} for normlization: {filtered_targs.shape[0]}")
                 mean_temp = torch.mean(filtered_targs)
                 mean_bin.append(mean_temp)
                 std_temp = torch.std(filtered_targs)
