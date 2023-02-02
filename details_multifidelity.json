@@ -10,54 +10,54 @@
             "deltaOH"
         ],
         "fidelity_keys": [
-            "magmom",
+            "bandcenter",
+            "atomiccharges",
             "bandfilling",
-            "bandcenter"
+            "magmom"
         ],
         "loss_fn": "MSE",
         "metric_fn": "MAE",
         "optim": "Adam",
-        "lr": 0.001,
+        "lr": 0.0021720689935660143,
         "weight_decay": 0.0,
         "sched": "reduce_on_plateau",
         "val_size": 0.1,
         "test_size": 0.1
     },
     "modelparams": {
-        "feat_dim": 98,
+        "feat_dim": 128,
         "activation": "learnable_swish",
         "learnable_k": true,
-        "activation_f": "softplus",
-        "n_rbf": 20,
-        "cutoff": 5.0,
+        "activation_f": "swish",
+        "n_rbf": 23,
+        "cutoff": 4.865,
         "num_conv": 4,
-        "conv_dropout": 0.10,
+        "conv_dropout": 0.14,
         "atom_fea_len": {
-            "atom_emb": 128,
-            "target": 37
+            "atom_emb": 150,
+            "target": 36
         },
         "h_fea_len": {
-            "fidelity": 256,
-            "target": 29
+            "fidelity": 238,
+            "target": 27
         },
         "n_h": {
-            "fidelity": 2,
-            "target": 2
-        },
-        "readout_dropout": {
-            "atom_emb": 0.25,
-            "target": 0.05
-        },
-        "fc_dropout": {
-            "fidelity": 0.0,
-            "target": 0.05
-        },
-        "n_outputs": {
             "fidelity": 3,
             "target": 2
         },
+        "readout_dropout": {
+            "atom_emb": 0.10,
+            "target": 0.10
+        },
+        "fc_dropout": {
+            "fidelity": 0.10,
+            "target": 0.09667665304904224
+        },
+        "n_outputs": {
+            "fidelity": 4,
+            "target": 2
+        },
         "loss_coeff": {
-            "fidelity": 1.0,
             "target": 0.0
         }
     }

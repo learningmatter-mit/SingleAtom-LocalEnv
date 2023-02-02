@@ -16,18 +16,18 @@ parameters:
   type: double
 - name: epochs
   bounds:
-    min: 100
-    max: 250
+    min: 50
+    max: 200
   type: int
 - name: fc_dropout_target
   bounds:
     min: 0.0
-    max: 0.4
+    max: 0.3
   type: double
 - name: readout_dropout_target
   bounds:
     min: 0.0
-    max: 0.4
+    max: 0.3
   type: double
 - name: n_h_target
   bounds:

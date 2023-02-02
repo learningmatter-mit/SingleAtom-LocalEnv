@@ -17,17 +17,17 @@ parameters:
 - name: epochs
   bounds:
     min: 60
-    max: 200
+    max: 120
   type: int
 - name: fc_dropout_target
   bounds:
     min: 0.0
-    max: 0.4
+    max: 0.3
   type: double
 - name: readout_dropout_target
   bounds:
     min: 0.0
-    max: 0.4
+    max: 0.3
   type: double
 - name: n_h_target
   bounds:
@@ -37,16 +37,11 @@ parameters:
 - name: h_fea_len_target
   bounds:
     min: 8
-    max: 32
+    max: 64
   type: int
 - name: atom_fea_len_target
   bounds:
     min: 8
-    max: 64
+    max: 128
   type: int
-- name: loss_target
-  bounds:
-    min: 0.1
-    max: 2.0
-  type: double
 budget: 40
