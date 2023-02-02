@@ -27,12 +27,8 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
     converted_params["activation_f"] = modelparams["activation_f"]
     converted_params["learnable_k"] = modelparams["learnable_k"]
     converted_params["n_outputs"] = modelparams["n_outputs"]
-    converted_details["lr"] = {
-        "lr": sigoptparams.lr,
-    }
-    converted_details["weight_decay"] = {
-        "weight_decay": sigoptparams.weight_decay,
-    }
+    converted_details["lr"] = sigoptparams.lr
+    converted_details["weight_decay"] = sigoptparams.weight_decay
     if fidelity:
         converted_params["cutoff"] = modelparams["cutoff"]
         converted_params["feat_dim"] = modelparams["feat_dim"]
@@ -41,7 +37,7 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
         converted_params["conv_dropout"] = modelparams["conv_dropout"]
         converted_params["atom_fea_len"] = {
             "target": sigoptparams.atom_fea_len_target,
-            "fidelity": modelparams["atom_fea_len"]["atom_emb"],
+            "atom_emb": modelparams["atom_fea_len"]["atom_emb"],
         }
         converted_params["h_fea_len"] = {
             "target": sigoptparams.h_fea_len_target,
@@ -53,16 +49,15 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
         }
         converted_params["readout_dropout"] = {
             "target": sigoptparams.readout_dropout_target,
-            "fidelity": modelparams["readout_dropout"]["atom_emb"],
+            "atom_emb": modelparams["readout_dropout"]["atom_emb"],
         }
         converted_params["fc_dropout"] = {
             "target": sigoptparams.fc_dropout_target,
             "fidelity": modelparams["fc_dropout"]['fidelity'],
         }
-        sigoptparams.setdefault("loss_target", modelparams["loss_coeff"]["target"])
+        # sigoptparams.setdefault("loss_target", modelparams["loss_coeff"]["target"])
         converted_params["loss_coeff"] = {
-            "target": sigoptparams.loss_target,
-            "fidelity": modelparams["loss_coeff"]["fidelity"]
+            "target": modelparams["loss_coeff"]["target"]
         }
     else:
         converted_params["cutoff"] = sigoptparams.cutoff
@@ -84,9 +79,6 @@ def convert_to_sigopt_params(details, modelparams, sigoptparams, fidelity=False)
         }
         converted_params["fc_dropout"] = {
             "target": sigoptparams.fc_dropout_target,
-        }
-        converted_params["loss_coeff"] = {
-            "target": modelparams["loss_coeff"]["target"]
         }
 
     return converted_details, converted_params
