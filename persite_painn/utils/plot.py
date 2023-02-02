@@ -31,7 +31,7 @@ from matplotlib.colors import LogNorm, Normalize, to_hex
 from pandas import options
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import Structure
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import mean_absolute_error
 from tqdm import tqdm
 
@@ -143,6 +143,7 @@ def plot_scatter(
         ax.scatter(new_targ, new_pred, facecolors='none', edgecolors=edgecolor)
         mae = mean_absolute_error(new_targ, new_pred)
         r, _ = pearsonr(new_targ, new_pred)
+        r_s = spearmanr(new_targ, new_pred).correlation
 
         if scale == "log":
             new_pred = np.abs(new_pred) + 1e-8
@@ -179,8 +180,8 @@ def plot_scatter(
         ax.set_xlabel("Calculated %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
 
         ax.annotate(
-            "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, UNITS[prop_key]),
-            (0.03, 0.88),
+            "Pearson's r: %.3f \nSpearman's r: %.3f \nMAE: %.3f %s " % (r, r_s, mae, UNITS[prop_key]),
+            (0.05, 0.85),
             xycoords="axes fraction",
             fontsize=6,
         )
@@ -263,6 +264,7 @@ def plot_hexbin(
 
         mae = mean_absolute_error(new_targ, new_pred)
         r, _ = pearsonr(new_targ, new_pred)
+        r_s = spearmanr(new_targ, new_pred).correlation
 
         if scale == "log":
             new_pred = np.abs(new_pred) + 1e-8
@@ -344,8 +346,8 @@ def plot_hexbin(
         ax.set_xlabel("Calculated %s [%s]" % (PROPERTIES[prop_key], UNITS[prop_key]), fontsize=8)
 
         ax.annotate(
-            "Pearson's r: %.3f \nMAE: %.3f %s " % (r, mae, UNITS[prop_key]),
-            (0.03, 0.88),
+            "Pearson's r: %.3f \nSpearman's r: %.3f \nMAE: %.3f %s " % (r, r_s, mae, UNITS[prop_key]),
+            (0.05, 0.85),
             xycoords="axes fraction",
             fontsize=6,
         )
