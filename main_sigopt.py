@@ -155,7 +155,7 @@ def main(args):
         targs.append(batch["target"])
 
     targs = torch.concat(targs)
-    normalizer_target = Normalizer(targs)
+    normalizer_target = Normalizer(targs, "target")
     normalizer["target"] = normalizer_target
     new_params.update({"means": {"target": normalizer_target.mean}})
     new_params.update({"stddevs": {"target": normalizer_target.std}})
@@ -165,7 +165,7 @@ def main(args):
         for batch in train_set:
             fidelity.append(batch["fidelity"])
         fidelity = torch.concat(fidelity)
-        normalizer_fidelity = Normalizer(fidelity)
+        normalizer_fidelity = Normalizer(fidelity, "fidelity")
         normalizer["fidelity"] = normalizer_fidelity
         new_params.update(
             {
@@ -236,11 +236,12 @@ def main(args):
 
     # Set loss function
     if details["multifidelity"]:
-        loss_coeff = modelparams["loss_coeff"]
+        loss_coeff = {"fidelity": 1.0 - new_params["loss_coeff"]["target"], "target": new_params["loss_coeff"]["target"]}
         correspondence_keys = {"fidelity": "fidelity", "target": "target"}
     else:
         loss_coeff = {"target": 1.0}
         correspondence_keys = {"target": "target"}
+
     # Set loss function
     loss_fn = get_loss_metric_fn(
         loss_coeff=loss_coeff,
@@ -306,9 +307,10 @@ def main(args):
 
     early_stop = [args.early_stop_val, args.early_stop_train]
 
-    # for i, param in enumerate(model.fn_target.conv_to_fc.parameters()):
-    #     if i == 0:
-    #         param.requires_grad = False
+    if details["multifidelity"]:
+        for i, param in enumerate(model.fn_target.conv_to_fc.parameters()):
+            if i == 0:
+                param.requires_grad = False
 
     # set Trainer
     trainer = Trainer(

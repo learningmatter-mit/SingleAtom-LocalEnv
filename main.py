@@ -34,7 +34,7 @@ parser.add_argument(
     "--workers", default=0, type=int, help="number of data loading workers"
 )
 parser.add_argument(
-    "--epochs", default=150, type=int, help="number of total epochs to run"
+    "--epochs", default=50, type=int, help="number of total epochs to run"
 )
 parser.add_argument(
     "--start_epoch",
@@ -139,7 +139,7 @@ def main(args):
         targs.append(batch["target"])
 
     targs = torch.concat(targs)
-    normalizer_target = Normalizer(targs)
+    normalizer_target = Normalizer(targs, "target")
     normalizer["target"] = normalizer_target
     modelparams.update({"means": {"target": normalizer_target.mean}})
     modelparams.update({"stddevs": {"target": normalizer_target.std}})
@@ -150,7 +150,7 @@ def main(args):
             fidelity.append(batch["fidelity"])
         fidelity = torch.concat(fidelity)
 
-        normalizer_fidelity = Normalizer(fidelity)
+        normalizer_fidelity = Normalizer(fidelity, "fidelity")
         normalizer["fidelity"] = normalizer_fidelity
         modelparams.update(
             {
@@ -218,7 +218,7 @@ def main(args):
 
     # Set loss function
     if details["multifidelity"]:
-        loss_coeff = modelparams["loss_coeff"]
+        loss_coeff = {"fidelity": 1.0 - modelparams["loss_coeff"]["target"], "target": modelparams["loss_coeff"]["target"]}
         correspondence_keys = {"fidelity": "fidelity", "target": "target"}
     else:
         loss_coeff = {"target": 1.0}
@@ -287,9 +287,10 @@ def main(args):
     early_stop = [args.early_stop_val, args.early_stop_train]
 
     # Turn off gradient
-    # for i, param in enumerate(model.readout_block_target.parameters()):
-    #     if i == 0:
-    #         param.requires_grad = False
+    if details["multifidelity"]:
+        for i, param in enumerate(model.fn_target.conv_to_fc.parameters()):
+            if i == 0:
+                param.requires_grad = False
 
     # set Trainer
     trainer = Trainer(
