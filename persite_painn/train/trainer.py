@@ -152,7 +152,7 @@ class Trainer:
                 self.scheduler.step()
             # print(self.optimizer.param_groups[0]['lr'])
 
-            is_best = val_loss < best_loss
+            is_best = val_loss <= best_loss
             best_loss = min(val_loss, best_loss)
             best_metric = min(val_metric, best_metric)
             if self.normalizer is not None:
