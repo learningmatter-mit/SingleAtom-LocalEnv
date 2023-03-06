@@ -288,9 +288,8 @@ def main(args):
 
     # Turn off gradient
     if details["multifidelity"]:
-        for i, param in enumerate(model.fn_target.conv_to_fc.parameters()):
-            if i == 0:
-                param.requires_grad = False
+        for param in model.fn_target.conv_to_fc.parameters():
+            param.requires_grad = False
 
     # set Trainer
     trainer = Trainer(

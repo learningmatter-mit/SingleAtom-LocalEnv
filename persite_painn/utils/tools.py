@@ -1,25 +1,8 @@
 import torch
 import json
 import numpy as np
-from persite_painn.nn.activations import shifted_softplus, Swish, LearnableSwish
 
-from persite_painn.nn.layers import Dense
 from typing import Dict
-
-layer_types = {
-    "linear": torch.nn.Linear,
-    "Tanh": torch.nn.Tanh,
-    "ReLU": torch.nn.ReLU,
-    "Dense": Dense,
-    "shifted_softplus": shifted_softplus,
-    "sigmoid": torch.nn.Sigmoid,
-    "Dropout": torch.nn.Dropout,
-    "LeakyReLU": torch.nn.LeakyReLU,
-    "ELU": torch.nn.ELU,
-    "swish": Swish,
-    "learnable_swish": LearnableSwish,
-    "softplus": torch.nn.Softplus,
-}
 
 
 def make_directed(nbr_list):

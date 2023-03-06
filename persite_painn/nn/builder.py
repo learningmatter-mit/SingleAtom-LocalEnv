@@ -8,7 +8,9 @@ import json
 import torch
 from persite_painn.nn.models import Painn, PainnMultifidelity
 from typing import Dict
+from persite_painn.nn.activations import shifted_softplus, Swish, LearnableSwish
 
+from persite_painn.nn.layers import Dense
 
 PARAMS_TYPE = {
     "Painn": {
@@ -37,6 +39,21 @@ PARAMS_TYPE = {
         "n_outputs": Dict,
         "site_prediction": bool,
     },
+}
+
+LAYERS_TYPE = {
+    "linear": torch.nn.Linear,
+    "Tanh": torch.nn.Tanh,
+    "ReLU": torch.nn.ReLU,
+    "Dense": Dense,
+    "shifted_softplus": shifted_softplus,
+    "sigmoid": torch.nn.Sigmoid,
+    "Dropout": torch.nn.Dropout,
+    "LeakyReLU": torch.nn.LeakyReLU,
+    "ELU": torch.nn.ELU,
+    "swish": Swish,
+    "learnable_swish": LearnableSwish,
+    "softplus": torch.nn.Softplus,
 }
 
 MODEL_DICT = {"Painn": Painn, "PainnMultifidelity": PainnMultifidelity}

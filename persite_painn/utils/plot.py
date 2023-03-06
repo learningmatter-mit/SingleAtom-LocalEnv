@@ -82,7 +82,8 @@ def plot_scatter(
     scale="linear",
     inc_factor=1.1,
     dec_factor=0.9,
-    edgecolor="#A7441C",
+    facecolor="#219ebc",
+    edgecolor="#ffffff",
     style='scifig'
 ):
     new_targ = []
@@ -140,7 +141,7 @@ def plot_scatter(
 
     with plt.style.context(style):
         fig, ax = plt.subplots()
-        ax.scatter(new_targ, new_pred, facecolors='none', edgecolors=edgecolor)
+        ax.scatter(new_targ, new_pred, facecolors=facecolor, edgecolors=edgecolor, alpha=0.75, linewidth=0.5, s=15)
         mae = mean_absolute_error(new_targ, new_pred)
         r, _ = pearsonr(new_targ, new_pred)
         r_s = spearmanr(new_targ, new_pred).correlation
