@@ -28,7 +28,7 @@ class CosineEnvelope(nn.Module):
 
 
 class Dense(nn.Linear):
-    """Applies a dense layer with activation: :math:`y = activation(Wx + b)`
+    """Applies a dense layer with activation: :math:`y = activation(Wx (x W^T)+ b)`
     Args:
         in_features (int): number of input feature
         out_features (int): number of output features
