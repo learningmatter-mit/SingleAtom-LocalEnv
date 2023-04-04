@@ -67,8 +67,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--wandb",
+    action='store_true',
     default=False,
-    type=bool,
     help="Whether to run with W & B",
 )
 
