@@ -600,6 +600,343 @@ def convert_nan(x):
     return new_x
 
 
+class Dataset_lite(TorchDataset):
+    """Dataset to deal with NFF calculations.
+
+    Attributes:
+        props (dict of lists): dictionary, where each key is the name of a property and
+            each value is a list. The element of each list is the properties of a single
+            geometry, whose coordinates are given by
+            `nxyz`.
+
+            Keys are the name of the property and values are the properties. Each value
+            is given by `props[idx][key]`. The only mandatory key is 'nxyz'. If inputting
+            energies, forces or hessians of different electronic states, the quantities
+            should be distinguished with a "_n" suffix, where n = 0, 1, 2, ...
+            Whatever name is given to the energy of state n, the corresponding force name
+            must be the exact same name, but with "energy" replaced by "force".
+
+            Example:
+
+                props = {
+                    'nxyz': [np.array([[1, 0, 0, 0], [1, 1.1, 0, 0]]),
+                             np.array([[1, 3, 0, 0], [1, 1.1, 5, 0]])],
+                    'lattaice': [[np.array([1,0,0])],[np.array([0,1,0])],[np.array([0,0,1])]]
+                    'site_prop': [[]]
+                    'target': [[]]
+                }
+
+            Periodic boundary conditions must be specified through the 'offset' key in
+                props. Once the neighborlist is created, distances between
+                atoms are computed by subtracting their xyz coordinates
+                and adding to the offset vector. This ensures images
+                of atoms outside of the unit cell have different
+                distances when compared to atoms inside of the unit cell.
+                This also bypasses the need for a reindexing.
+
+        units (str): units of the energies, forces etc.
+
+    """
+
+    def __init__(
+        self,
+        props,
+        check_props=True,
+        do_copy=True,
+    ):
+        """Constructor for Dataset class.
+
+        Args:
+            props (dictionary of lists): dictionary containing the
+                properties of the system. Each key has a list, and
+                all lists have the same length.
+            units (str): units of the system.
+        """
+        # if check_props:
+        #     if do_copy:
+        #         self.props = self._check_dictionary(deepcopy(props))
+        #     else:
+        #         self.props = self._check_dictionary(props)
+        # else:
+        #     self.props = props
+        if props is not None and check_props:
+            if do_copy:
+                self.props = self._check_dictionary(deepcopy(props))
+            else:
+                self.props = self._check_dictionary(props)
+        elif props is None:
+            self.props = props
+
+    def __len__(self):
+        """Summary
+
+        Returns:
+            TYPE: Description
+        """
+        return len(self.props["nxyz"])
+
+    def __getitem__(self, idx):
+        """Summary
+
+        Args:
+            idx (TYPE): Description
+
+        Returns:
+            TYPE: Description
+        """
+        return {key: val[idx] for key, val in self.props.items()}
+
+    def __add__(self, other):
+        """Summary
+
+        Args:
+            other (TYPE): Description
+
+        Returns:
+            TYPE: Description
+        """
+        if other.units != self.units:
+            other = other.copy().to_units(self.units)
+
+        new_props = self.props
+        keys = list(new_props.keys())
+        for key in keys:
+            if key not in other.props:
+                new_props.pop(key)
+                continue
+            val = other.props[key]
+            if type(val) is list:
+                new_props[key] += val
+            else:
+                old_val = new_props[key]
+                new_props[key] = torch.cat([old_val, val.to(old_val.dtype)])
+        self.props = new_props
+
+        return copy.deepcopy(self)
+
+    def _check_dictionary(self, props):
+        """Check the dictionary or properties to see if it has the
+        specified format.
+
+        Args:
+            props (TYPE): Description
+
+        Returns:
+            TYPE: Description
+        """
+
+        assert "nxyz" in props.keys()
+        n_atoms = [len(x) for x in props["nxyz"]]
+        n_geoms = len(props["nxyz"])
+
+        if "num_atoms" not in props.keys():
+            props["num_atoms"] = torch.LongTensor(n_atoms)
+        else:
+            props["num_atoms"] = torch.LongTensor(props["num_atoms"])
+
+        for key, val in props.items():
+
+            if val is None:
+                props[key] = to_tensor([np.nan] * n_geoms)
+
+            elif any([x is None for x in val]):
+                bad_indices = [i for i, item in enumerate(val) if item is None]
+                good_indices = [
+                    index for index in range(len(val)) if index not in bad_indices
+                ]
+                if len(good_indices) == 0:
+                    nan_list = np.array([float("NaN")]).tolist()
+                else:
+                    good_index = good_indices[0]
+                    nan_list = (np.array(val[good_index]) * float("NaN")).tolist()
+                for index in bad_indices:
+                    props[key][index] = nan_list
+                props.update({key: to_tensor(val)})
+
+            else:
+                assert len(val) == n_geoms, (
+                    f"length of {key} is not "
+                    f"compatible with {n_geoms} "
+                    "geometries"
+                )
+                props[key] = to_tensor(val)
+
+        return props
+
+    def generate_neighbor_list(
+        self, cutoff, undirected=True, key="nbr_list", offset_key="offsets"
+    ):
+        """Generates a neighbor list for each one of the atoms in the dataset.
+            By default, does not consider periodic boundary conditions.
+
+        Args:
+            cutoff (float): distance up to which atoms are considered bonded.
+            undirected (bool, optional): Description
+
+        Returns:
+            TYPE: Description
+        """
+        from .graph import get_neighbor_list as get_neighbor_list_
+        if "lattice" not in self.props:
+            self.props[key] = [
+                get_neighbor_list_(nxyz[:, 1:4], cutoff, undirected)
+                for nxyz in self.props["nxyz"]
+            ]
+            self.props[offset_key] = [
+                torch.sparse.FloatTensor(nbrlist.shape[0], 3)
+                for nbrlist in self.props[key]
+            ]
+        else:
+            self._get_periodic_neighbor_list(
+                cutoff=cutoff, undirected=undirected, offset_key=offset_key, nbr_key=key
+            )
+            return self.props[key], self.props[offset_key]
+
+        return self.props[key]
+
+    def make_all_directed(self):
+        from .graph import make_dset_directed as make_dset_directed_
+        make_dset_directed_(self)
+
+    # def generate_angle_list(self):
+
+    #     if "lattice" in self.props:
+    #         raise NotImplementedError("Angles not implemented for PBC.")
+
+    #     self.make_all_directed()
+
+    #     angles, nbrs = get_angle_list(self.props["nbr_list"])
+    #     self.props["nbr_list"] = nbrs
+    #     self.props["angle_list"] = angles
+
+    #     ji_idx, kj_idx = add_ji_kj(angles, nbrs)
+
+    #     self.props["ji_idx"] = ji_idx
+    #     self.props["kj_idx"] = kj_idx
+
+    #     return angles
+
+    # def generate_kj_ji(self, num_procs=1):
+    #     """
+    #     Generate only the `ji_idx` and `kj_idx` without storing
+    #     the full angle list.
+    #     """
+
+    #     self.make_all_directed()
+    #     add_kj_ji_parallel(self, num_procs=num_procs)
+
+    def _get_periodic_neighbor_list(
+        self, cutoff, undirected=False, offset_key="offsets", nbr_key="nbr_list"
+    ):
+
+        from .atoms import AtomsBatch as AtomsBatch_
+
+        nbrlist = []
+        offsets = []
+        for nxyz, lattice in zip(self.props["nxyz"], self.props["lattice"]):
+            atoms = AtomsBatch_(
+                nxyz[:, 0].long(),
+                props={"num_atoms": torch.LongTensor([len(nxyz[:, 0])])},
+                positions=nxyz[:, 1:],
+                cell=lattice,
+                pbc=True,
+                cutoff=cutoff,
+                directed=(not undirected),
+            )
+            nbrs, offs = atoms.update_nbr_list()
+            nbrlist.append(nbrs)
+            offsets.append(offs)
+
+        self.props[nbr_key] = nbrlist
+        self.props[offset_key] = offsets
+
+    def copy(self):
+        """Copies the current dataset
+
+        Returns:
+            TYPE: Description
+        """
+        return Dataset(self.props, self.units)
+
+    def change_idx(self, idx):
+        """
+        Change the dataset so that the properties are ordered by the
+        indices `idx`. If `idx` does not contain all of the original
+        indices in the dataset, then this will reduce the size of the
+        dataset.
+        """
+
+        for key, val in self.props.items():
+            if isinstance(val, list):
+                self.props[key] = [val[i] for i in idx]
+            else:
+                self.props[key] = val[idx]
+
+    def shuffle(self):
+        """Summary
+
+        Returns:
+            TYPE: Description
+        """
+        idx = list(range(len(self)))
+        reindex = skshuffle(idx)
+        self.change_idx(reindex)
+
+    def add_morgan(self, vec_length):
+        """
+        Add Morgan fingerprints to each species in the dataset.
+        Args:
+            vec_length (int): length of fingerprint
+        Returns:
+            None
+        """
+        from .features import add_morgan as external_morgan_
+
+        external_morgan_(self, vec_length)
+
+    def save(self, path):
+        """Summary
+
+        Args:
+            path (TYPE): Description
+        """
+
+        # to deal with the fact that sparse tensors can't be pickled
+        offsets = self.props.get("offsets", torch.LongTensor([0]))
+        old_offsets = copy.deepcopy(offsets)
+
+        # check if it's a sparse tensor. The first two conditions
+        # Are needed for backwards compatability in case it's a float
+        # or empty list
+
+        if all([hasattr(offsets, "__len__"), len(offsets) > 0]):
+            if isinstance(offsets[0], torch.sparse.FloatTensor):
+                self.props["offsets"] = [val.to_dense() for val in offsets]
+
+        torch.save(self, path)
+        if "offsets" in self.props:
+            self.props["offsets"] = old_offsets
+
+    @classmethod
+    def load(cls, path):
+        """Summary
+
+        Args:
+            path (TYPE): Description
+
+        Returns:
+            TYPE: Description
+
+        Raises:
+            TypeError: Description
+        """
+        obj = torch.load(path)
+        if isinstance(obj, cls):
+            return obj
+        else:
+            raise TypeError("{} is not an instance from {}".format(path, type(cls)))
+
+
 def to_tensor(x, stack=False):
     """
     Converts input `x` to torch.Tensor.

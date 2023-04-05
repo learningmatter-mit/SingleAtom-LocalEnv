@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 
 from pymatgen.io.ase import AseAtomsAdaptor as AA
 import numpy as np
-from .dataset import Dataset
+from .dataset import Dataset, Dataset_lite
 
 
 def build_dataset(
@@ -20,6 +20,7 @@ def build_dataset(
         seed=seed,
     )
     dataset = Dataset(props=props)
+    # dataset = Dataset_lite(props=props)
     dataset.generate_neighbor_list(cutoff=cutoff, undirected=False)
 
     return dataset
