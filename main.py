@@ -280,7 +280,8 @@ def main(args):
             val_ids.append(item["name"])
         else:
             val_ids.append(item["name"].item())
-
+            
+    os.makedirs(args.savedir, exist_ok=True)
     pkl.dump(train_ids, open(f"{args.savedir}/train_ids.pkl", "wb"))
     pkl.dump(val_ids, open(f"{args.savedir}/val_ids.pkl", "wb"))
 
