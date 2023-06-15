@@ -13,6 +13,8 @@ data_cache/*
 notebooks/*
 !notebooks/.gitkeep
 wandb
+sampling_active_learning/*
+!sampling_active_learning
 
 # C extensions
 *.so

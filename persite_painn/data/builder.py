@@ -133,7 +133,7 @@ def binary_split(dataset, targ_name, test_size, seed):
     return idx_train, idx_test
 
 
-def split_train_test(dataset, test_size=0.2, binary=False, targ_name=None, seed=None):
+def split_train_test(dataset, test_size=0.2, binary=False, targ_name=None, seed=None, test_ids=None):
     """Splits the current dataset in two, one for training and
     another for testing.
 
@@ -152,6 +152,15 @@ def split_train_test(dataset, test_size=0.2, binary=False, targ_name=None, seed=
         idx_train, idx_test = binary_split(
             dataset=dataset, targ_name=targ_name, test_size=test_size, seed=seed
         )
+    elif test_ids is not None:
+        idx_train = []
+        idx_test = []
+
+        for i, data in enumerate(dataset):
+            if data['name'].item() in test_ids:
+                idx_test.append(i)
+            else:
+                idx_train.append(i)
     else:
         idx = list(range(len(dataset)))
         idx_train, idx_test = train_test_split(
@@ -169,7 +178,7 @@ def split_train_test(dataset, test_size=0.2, binary=False, targ_name=None, seed=
 
 
 def split_train_validation_test(
-    dataset, val_size=0.2, test_size=0.2, seed=None, **kwargs
+    dataset, val_size=0.2, test_size=0.2, seed=None, test_ids=None, val_ids=None
 ):
     """Summary
     Args:
@@ -179,9 +188,9 @@ def split_train_validation_test(
     Returns:
         TYPE: Description
     """
-    train, test = split_train_test(dataset, test_size=test_size, seed=seed, **kwargs)
+    train, test = split_train_test(dataset, test_size=test_size, seed=seed, test_ids=test_ids)
     train, validation = split_train_test(
-        train, test_size=val_size / (1 - test_size), seed=seed, **kwargs
+        train, test_size=val_size / (1 - test_size), seed=seed, test_ids=val_ids
     )
 
     return train, validation, test

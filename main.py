@@ -49,13 +49,13 @@ parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
 parser.add_argument("--device", default="cuda", type=str, help="cpu or cuda")
 parser.add_argument(
     "--early_stop_val",
-    default=12,
+    default=20,
     type=int,
     help="early stopping condition for validation loss update count",
 )
 parser.add_argument(
     "--early_stop_train",
-    default=0.1,
+    default=0.05,
     type=float,
     help="early stopping condition for train loss tolerance",
 )
@@ -70,6 +70,18 @@ parser.add_argument(
     action='store_true',
     default=False,
     help="Whether to run with W & B",
+)
+parser.add_argument(
+    "--test_ids",
+    default=None,
+    type=str,
+    help="pickle filename where test ids are stored",
+)
+parser.add_argument(
+    "--val_ids",
+    default=None,
+    type=str,
+    help="pickle filename where val ids are stored",
 )
 
 
@@ -124,23 +136,34 @@ def main(args):
             print("Done creating dataset, caching...")
             dataset.save(args.cache)
             print("Done caching dataset")
-
+    if args.test_ids is not None and args.val_ids is not None:
+        test_ids_bin = pkl.load(open(args.test_ids, 'rb'))
+        val_ids_bin = pkl.load(open(args.val_ids, 'rb'))
+        val_size = details['val_size']
+        test_size = 0
+    else:
+        test_ids_bin = None
+        val_ids_bin = None
+        val_size = details['val_size']
+        test_size = details['test_size']
     train_set, val_set, test_set = split_train_validation_test(
         dataset,
-        val_size=details["val_size"],
-        test_size=details["test_size"],
+        val_size=val_size,
+        test_size=test_size,
         seed=args.seed,
+        test_ids=test_ids_bin,
+        val_ids=val_ids_bin
     )
 
     # Normalizer
-    normalizer = {}
+    # normalizer = {}
     targs = []
     for batch in train_set:
         targs.append(batch["target"])
 
     targs = torch.concat(targs)
     normalizer_target = Normalizer(targs, "target")
-    normalizer["target"] = normalizer_target
+    # normalizer["target"] = normalizer_target
     modelparams.update({"means": {"target": normalizer_target.mean}})
     modelparams.update({"stddevs": {"target": normalizer_target.std}})
 
@@ -151,7 +174,7 @@ def main(args):
         fidelity = torch.concat(fidelity)
 
         normalizer_fidelity = Normalizer(fidelity, "fidelity")
-        normalizer["fidelity"] = normalizer_fidelity
+        # normalizer["fidelity"] = normalizer_fidelity
         modelparams.update(
             {
                 "means": {
@@ -196,14 +219,14 @@ def main(args):
                 model.load_state_dict(checkpoint["state_dict"])
                 optimizer.load_state_dict(checkpoint["optimizer"])
                 args.start_epoch = checkpoint["epoch"]
-                normalizer.load_state_dict(checkpoint["normalizer"])
+                # normalizer.load_state_dict(checkpoint["normalizer"])
             elif args.start_epoch == 0:
                 checkpoint = torch.load(args.resume)
                 best_metric = checkpoint["best_metric"]
                 best_loss = checkpoint["best_loss"]
                 model.load_state_dict(checkpoint["state_dict"])
                 optimizer.load_state_dict(checkpoint["optimizer"])
-                normalizer.load_state_dict(checkpoint["normalizer"])
+                # normalizer.load_state_dict(checkpoint["normalizer"])
 
             print(
                 "=> loaded checkpoint '{}' (epoch {})".format(
@@ -303,7 +326,7 @@ def main(args):
         train_loader=train_loader,
         validation_loader=val_loader,
         run_wandb=args.wandb,
-        normalizer=normalizer,
+        # normalizer=normalizer,
     )
     # Train
     _ = trainer.train(
