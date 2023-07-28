@@ -1,10 +1,33 @@
 import torch
-from persite_painn.nn.layers import to_module, CosineEnvelope, Dense, PainnRadialBasis
-
-from persite_painn.utils.scatter import scatter_add
 from torch import nn
 
+from persite_painn.nn.activations import (LearnableSwish, Swish,
+                                          shifted_softplus)
+from persite_painn.nn.layers import CosineEnvelope, Dense, PainnRadialBasis
+from persite_painn.utils.scatter import scatter_add
+
 EPS = 1e-8
+
+
+LAYERS_TYPE = {
+    "linear": torch.nn.Linear,
+    "Tanh": torch.nn.Tanh,
+    "ReLU": torch.nn.ReLU,
+    "Dense": Dense,
+    "shifted_softplus": shifted_softplus,
+    "sigmoid": torch.nn.Sigmoid,
+    "Dropout": torch.nn.Dropout,
+    "LeakyReLU": torch.nn.LeakyReLU,
+    "ELU": torch.nn.ELU,
+    "swish": Swish,
+    "learnable_swish": LearnableSwish,
+    "softplus": torch.nn.Softplus,
+}
+
+
+def to_module(activation):
+
+    return LAYERS_TYPE[activation]()
 
 
 def norm(vec):

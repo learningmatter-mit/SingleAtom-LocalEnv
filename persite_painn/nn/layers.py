@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 from torch.nn.init import constant_, xavier_uniform_
 
-
 zeros_initializer = partial(constant_, val=0.0)
 DEFAULT_DROPOUT_RATE = 0.0
 EPS = 1e-15
@@ -118,7 +117,3 @@ class PainnRadialBasis(nn.Module):
         return output
 
 
-def to_module(activation):
-    from persite_painn.nn.builder import LAYERS_TYPE
-
-    return LAYERS_TYPE[activation]()

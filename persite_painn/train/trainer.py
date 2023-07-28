@@ -150,7 +150,6 @@ class Trainer:
                 self.scheduler.step(val_loss)
             else:
                 self.scheduler.step()
-            # print(self.optimizer.param_groups[0]['lr'])
 
             is_best = val_loss <= best_loss
             best_loss = min(val_loss, best_loss)
@@ -197,7 +196,7 @@ class Trainer:
         if save_results:
             with open(f"{self.model_path}/results.log", "w") as f:
                 f.write("| Epoch | Train_L | Train_M | Vali_L | Vali_M |\n")
-                for i in range(len(train_losses)):
+                for i in range(start_epoch, len(train_losses)):
                     f.write(
                         f"{i}  {train_losses[i]:.4f}  {train_metrics[i]:.4f}  {val_losses[i]:.4f}  {val_metrics[i]:.4f}\n"
                     )

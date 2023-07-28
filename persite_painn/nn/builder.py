@@ -4,13 +4,12 @@ while checking for the validity of hyperparameters.
 """
 
 import json
+from pathlib import Path
+from typing import Dict
 
 import torch
-from persite_painn.nn.models import Painn, PainnMultifidelity
-from typing import Dict
-from persite_painn.nn.activations import shifted_softplus, Swish, LearnableSwish
 
-from persite_painn.nn.layers import Dense
+from persite_painn.nn.models import Painn, PainnMultifidelity
 
 PARAMS_TYPE = {
     "Painn": {
@@ -39,21 +38,6 @@ PARAMS_TYPE = {
         "n_outputs": Dict,
         "site_prediction": bool,
     },
-}
-
-LAYERS_TYPE = {
-    "linear": torch.nn.Linear,
-    "Tanh": torch.nn.Tanh,
-    "ReLU": torch.nn.ReLU,
-    "Dense": Dense,
-    "shifted_softplus": shifted_softplus,
-    "sigmoid": torch.nn.Sigmoid,
-    "Dropout": torch.nn.Dropout,
-    "LeakyReLU": torch.nn.LeakyReLU,
-    "ELU": torch.nn.ELU,
-    "swish": Swish,
-    "learnable_swish": LearnableSwish,
-    "softplus": torch.nn.Softplus,
 }
 
 MODEL_DICT = {"Painn": Painn, "PainnMultifidelity": PainnMultifidelity}
@@ -142,3 +126,12 @@ def load_model(model_path, model_type="Painn"):
     model.load_state_dict(best_checkpoint["state_dict"])
     model.eval()
     return model, best_checkpoint
+
+
+def get_model_list(model_path, model_type="PainnMultifidelity", num_model=10):
+    model_list = []
+    for i in range(num_model):
+        model, _ = load_model(model_path=Path(model_path) / str(i) / Path("best_model.pth.tar"), model_type=model_type)
+        model_list.append(model)
+
+    return model_list

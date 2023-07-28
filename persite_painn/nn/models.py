@@ -1,13 +1,9 @@
 import torch
-from persite_painn.nn.modules import (
-    EmbeddingBlock,
-    FullyConnected,
-    MessageBlock,
-    ReadoutBlock,
-    UpdateBlock,
-)
-from persite_painn.utils.tools import get_rij, make_directed
 from torch import nn
+
+from persite_painn.nn.modules import (EmbeddingBlock, FullyConnected,
+                                      MessageBlock, ReadoutBlock, UpdateBlock)
+from persite_painn.utils.tools import get_rij, make_directed
 
 
 class Painn(nn.Module):
