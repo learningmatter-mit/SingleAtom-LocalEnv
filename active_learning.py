@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from persite_painn.data import collate_dicts
-from persite_painn.nn import load_model
+from persite_painn.nn.builder import load_model
 from persite_painn.utils.cuda import batch_to
 from persite_painn.utils.postprocess import (get_best_target,
                                              get_expectedImprovement, get_ensemble_uncertainty)
@@ -50,7 +50,8 @@ parser.add_argument("--uncertainty", action='store_true',
 parser.add_argument("--multifidelity", action='store_true',
     default=False,
     help="Whether to consider multifidelity",)
-
+parser.add_argument("--num_u", default=60, type=int, help='number of uncertainty datapoints')
+parser.add_argument("--num_d", default=20, type=int, help='number of diversity datapoints')
 
 def get_num_metals_batch(batch, metal_filter):
     count = 0
@@ -336,7 +337,7 @@ class ActiveLearning:
             cm = plt.cm.get_cmap("YlGnBu")
             ax = fig.add_subplot()
             ax.scatter(df_pca[:,0], df_pca[:,1], s=1.0, alpha=0.8, c = expI_bin, cmap=cm)
-            im = ax.scatㄹter(np.array(df_pca[:,0])[expI_mask], np.array(df_pca[:,1])[expI_mask], s=2.0, c = np.array(expI_bin)[expI_mask], cmap=cm)
+            im = ax.scatter(np.array(df_pca[:,0])[expI_mask], np.array(df_pca[:,1])[expI_mask], s=2.0, c = np.array(expI_bin)[expI_mask], cmap=cm)
             # im.set_clim(0.00,0.10)
             fig.colorbar(im, ax=ax, label=label_name)
             ax.set_xlabel("Principal component 1")
@@ -374,7 +375,9 @@ if __name__ == "__main__":
     print(model_type)
     activelearning = ActiveLearning(models_path=model_path, dataset=dataset, total_dataset=total_dataset, model_type=model_type)
     if args.get_data:
-        new_data = activelearning.get_next_data(60, 20, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
+        # new_data = activelearning.get_next_data(60, 20, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
+        # new_data = activelearning.get_next_data(30, 15, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
+        new_data = activelearning.get_next_data(args.num_u, args.num_d, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
         print(f"Next Samples: {new_data}")
         print(f"Next Samples in list: {list(new_data)}")
     if args.uncertainty:
