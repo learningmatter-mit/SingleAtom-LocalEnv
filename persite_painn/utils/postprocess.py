@@ -47,10 +47,13 @@ def getOverpotential_tensor(tensor):
 
         max_values_oer = torch.max(dgde_oer, dim=1).values
         max_values_orr = torch.max(dgde_orr, dim=1).values
+
+        max_values_oer_index = torch.argmax(dgde_oer, dim=1)
+        max_values_orr_index = torch.argmax(dgde_orr, dim=1)
         maxoer =  max_values_oer - 1.23
         maxorr = 1.23 + max_values_orr
 
-        return maxoer, maxorr
+        return maxoer, maxorr, max_values_oer_index, max_values_orr_index
 
 
 def get_best_target(dataset, s_models, device):
