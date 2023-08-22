@@ -150,6 +150,17 @@ class ActiveLearning:
                 var_mask.append(False)
         return uncertainty_sample, criterion, var_bin, var_mask, total_var_dict
 
+    def random_sampling(self, num_sample):
+
+        print("Random Sampling...")
+        total_key_bin = []
+        for data in self.unlabelled_dataset:
+            total_key_bin.append(data['name'].item())
+
+        sampled_key_bin = np.random.choice(total_key_bin, num_sample, replace=False)
+        return sampled_key_bin
+
+
     def bayesian_sampling(self, num_sample, epsilon):
         new_struc_name = []
         expI_bin = []
@@ -294,15 +305,22 @@ class ActiveLearning:
         if uncertainty_type == "bayesian":
             bayesian_sample, criterion, expI_bin, expI_mask, total_expI_dict = self.bayesian_sampling(num_sample=num_uncertainty, epsilon=epsilon)
             label_name = "$EI$"
+            sampled_data_name, similarity_matrix = self.diversity_sampling(bayesian_sample=bayesian_sample,total_expI_dict=total_expI_dict, criterion=criterion, num_sample=num_diversity)
+            print(len(bayesian_sample), len(set(bayesian_sample)))
         elif uncertainty_type == "variance":
             bayesian_sample, criterion, expI_bin, expI_mask, total_expI_dict = self.uncertainty_sampling(num_sample=num_uncertainty)
             label_name = "Var"
-        sampled_data_name, similarity_matrix = self.diversity_sampling(bayesian_sample=bayesian_sample,total_expI_dict=total_expI_dict, criterion=criterion, num_sample=num_diversity)
-        print(len(bayesian_sample), len(set(bayesian_sample)))
-        if save:
+            sampled_data_name, similarity_matrix = self.diversity_sampling(bayesian_sample=bayesian_sample,total_expI_dict=total_expI_dict, criterion=criterion, num_sample=num_diversity)
+            print(len(bayesian_sample), len(set(bayesian_sample)))
+        elif uncertainty_type == "random":
+            sampled_data_name = self.random_sampling(num_sample=num_uncertainty)
+            print(len(sampled_data_name), len(set(sampled_data_name)))
+        if save and uncertainty_type != "random":
             pkl.dump(list(bayesian_sample.keys()), open("uncertainty_keys.pkl", 'wb'))
             pkl.dump(list(bayesian_sample.values()), open("uncertainty_values.pkl", 'wb'))
             pkl.dump(list(sampled_data_name), open("new_data_keys.pkl", 'wb'))
+        elif save and uncertainty_type == "random":
+            pkl.dump(list(sampled_data_name), open("new_data_keys_random.pkl", 'wb'))
         if plot:
             print("Plot Results...")
             embedding_bin = self.get_atom_embedding(self.unlabelled_dataloader)
