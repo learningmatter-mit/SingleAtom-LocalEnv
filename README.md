@@ -1,13 +1,13 @@
-# Per-site PaiNN
+# Single Atom Local Environments
 
-Description
+This repository includes necessary scripts and models for reproducing "Active learning accelerated exploration of the single atom local environments in multimetallic systems for oxygen electrocatalysis". More information about the data, models and results can be found [here](https:/hojechun.github.io)
 
 ## Installation
 
 1. Clone the repository
 
 ```bash
-git clone git@github.mit.edu:MLMat/per-site_PaiNN.git
+git clone git@github.com:learningmatter-mit/SingleAtom-LocalEnv.git
 ```
 
 2. Conda environments

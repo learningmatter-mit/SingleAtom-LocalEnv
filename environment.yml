@@ -1,4 +1,4 @@
-name: persitePainn
+name: SingeAtom
 channels:
   - pytorch
   - conda-forge
