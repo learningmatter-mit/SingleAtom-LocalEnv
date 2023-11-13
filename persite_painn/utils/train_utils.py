@@ -1,5 +1,9 @@
-import torch
 from typing import Dict, Union
+
+import numpy as np
+import torch
+
+from persite_painn.utils.cuda import batch_to
 
 
 def inference(model, data, normalizer=None, output_key="target", device="cpu"):
@@ -155,3 +159,75 @@ class Normalizer:
             ValueError("input dimension is not right.")
 
         return mean, std, _max, _min, _sum
+
+
+def test_model_list(
+    model_list,
+    data_loader,
+    device,
+    normalizer=None,
+    multifidelity=False,
+):
+    """
+    test the model performances
+    Args:
+        model: Model,
+        data_loader: DataLoader,
+        metric_fn: metric function,
+        device: "cpu" or "cuda",
+    Return:
+        Lists of prediction, targets, ids, and metric
+    """
+    test_targets = []
+    test_preds = []
+    test_ids = []
+    test_targets_fidelity = []
+    test_preds_fidelity = []
+
+    with torch.no_grad():
+        for batch in data_loader:
+            batch = batch_to(batch, device)
+            target = batch["target"]
+            # Compute output
+            
+            output = ensemble_inference(model_list, batch, normalizer, "target", device)
+            # Rearrange the outputs
+            test_pred = output.data.cpu()
+            test_target = target.detach().cpu()
+
+            batch_ids = []
+            count = 0
+            num_bin = []
+            for i, val in enumerate(batch["num_atoms"].detach().cpu().numpy()):
+                count += val
+                num_bin.append(count)
+                if i == 0:
+                    change = list(np.arange(val))
+                else:
+                    adding_val = num_bin[i - 1]
+                    change = list(np.arange(val) + adding_val)
+                batch_ids.append(change)
+
+            test_preds += [test_pred[i].tolist() for i in batch_ids]
+            test_targets += [test_target[i].tolist() for i in batch_ids]
+
+            if multifidelity:
+                target_fidelity = batch["fidelity"].detach().cpu()
+                # Compute output
+                output_fidelity = ensemble_inference(model_list, batch, normalizer, "fidelity", device).data.cpu()
+
+                test_preds_fidelity += [output_fidelity[i].tolist() for i in batch_ids]
+                test_targets_fidelity += [
+                    target_fidelity[i].tolist() for i in batch_ids
+                ]
+            if isinstance(batch["name"], list):
+                test_ids += batch["name"]
+            else:
+                test_ids += batch["name"].detach().tolist()
+    return (
+        test_preds,
+        test_targets,
+        test_ids,
+        test_preds_fidelity,
+        test_targets_fidelity,
+    )
