@@ -12,6 +12,7 @@ wandb
 sampling_active_learning/*
 !sampling_active_learning
 examples/models/*
+!examples/models
 # C extensions
 *.so
 
