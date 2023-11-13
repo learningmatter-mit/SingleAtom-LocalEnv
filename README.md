@@ -7,7 +7,7 @@ This repository includes necessary scripts and models for reproducing "Active le
 1. Clone the repository
 
 ```bash
-git clone git@github.com:HojeChun/SingleAtom-LocalEnv.git
+git clone https://github.com/learningmatter-mit/SingleAtom-LocalEnv.git
 ```
 
 2. Conda environments setting and necessary package
