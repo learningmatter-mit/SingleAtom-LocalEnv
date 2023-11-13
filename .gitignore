@@ -4,18 +4,14 @@ __pycache__/
 *$py.class
 
 # Cache Data
-results/*
-!results/.gitkeep
 data_raw/*
 !data_raw/.gitkeep
 data_cache/*
 !data_cache/.gitkeep
-notebooks/*
-!notebooks/.gitkeep
 wandb
 sampling_active_learning/*
 !sampling_active_learning
-
+examples/models/*
 # C extensions
 *.so
 
