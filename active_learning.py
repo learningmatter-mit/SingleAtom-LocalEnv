@@ -15,11 +15,16 @@ from persite_painn.data import collate_dicts
 from persite_painn.nn.builder import load_model
 from persite_painn.utils.cuda import batch_to
 from persite_painn.utils.postprocess import (get_best_target,
-                                             get_expectedImprovement, get_ensemble_uncertainty)
+                                             get_expectedImprovement,
+                                             get_ensemble_uncertainty)
 from persite_painn.utils.tools import get_metal_filter
 
+
+UNCERTAINTY_TYPE = ["bayesian", "variance", "random"]
+
 parser = argparse.ArgumentParser(description="Active Learning")
-parser.add_argument("--model_path", default="./", type=str, help="path to raw data")
+parser.add_argument("--model_path", default="./", type=str,
+                    help="path to raw data")
 parser.add_argument(
     "--dataset",
     default="dataset_cache/dataset",
@@ -33,25 +38,24 @@ parser.add_argument(
     help="total dataset path",
 )
 parser.add_argument("--device", default="cuda", type=str, help="DEVICE")
-parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
+parser.add_argument("--cuda", default=0, type=int, help="GPU setting")
 parser.add_argument("--save", action='store_true',
-    default=False,
-    help="Whether to save in pkl",)
+                    default=False,
+                    help="Whether to save in pkl",)
 parser.add_argument("--plot", action='store_true',
-    default=False,
-    help="Whether to plot",)
-parser.add_argument("--uncertainty_type", default="bayesian", type=str, help="Types of uncertainty sampling bayesian or variance")
-parser.add_argument("--get_data", action='store_true',
-    default=False,
-    help="Whether to get next data",)
-parser.add_argument("--uncertainty", action='store_true',
-    default=False,
-    help="Whether to calculate uncertatinty",)
+                    default=False,
+                    help="Whether to plot",)
+parser.add_argument("--uncertainty_type", default="bayesian", type=str,
+                    help="Types of uncertainty sampling bayesian or variance")
+parser.add_argument("--calc_uncertainty", action='store_true',
+                    default=False,
+                    help="Whether to calculate uncertatinty",)
 parser.add_argument("--multifidelity", action='store_true',
-    default=False,
-    help="Whether to consider multifidelity",)
+                    default=False,
+                    help="Whether to consider multifidelity",)
 parser.add_argument("--num_u", default=60, type=int, help='number of uncertainty datapoints')
 parser.add_argument("--num_d", default=20, type=int, help='number of diversity datapoints')
+
 
 def get_num_metals_batch(batch, metal_filter):
     count = 0
@@ -83,9 +87,9 @@ class ActiveLearning:
             if data['name'].item() not in key_bin:
                 indices_to_keep.append(i)
         subset_dataset = Subset(self.total_dataset, indices_to_keep)
-        
+
         return subset_dataset
-        
+
     def make_model_list(self, models_path, num_model, model_type="PainnMultifidelity"):
         model_list = []
         for i in range(num_model):
@@ -94,9 +98,9 @@ class ActiveLearning:
             model_list.append(model)
 
         return model_list
-    
+
     def make_dataloader(self, dataset, batch_size):
-        dataloader =DataLoader(
+        dataloader = DataLoader(
                     dataset,
                     batch_size=batch_size,
                     num_workers=0,
@@ -135,7 +139,6 @@ class ActiveLearning:
         total_key_bin = []
         for data in self.dataset:
             total_key_bin.append(data['name'].item())
-            
         for i, value in enumerate(var_bin):
             if value >= criterion:
                 if new_struc_name[i] in total_key_bin:
@@ -159,7 +162,6 @@ class ActiveLearning:
 
         sampled_key_bin = np.random.choice(total_key_bin, num_sample, replace=False)
         return sampled_key_bin
-
 
     def bayesian_sampling(self, num_sample, epsilon):
         new_struc_name = []
@@ -208,7 +210,6 @@ class ActiveLearning:
                 expI_mask.append(False)
         return bayesian_sample, criterion, expI_bin, expI_mask, total_expI_dict
 
-
     def diversity_sampling(self, bayesian_sample, total_expI_dict, criterion, num_sample):
         features = {}
         def get_atom_features(name):
@@ -221,7 +222,7 @@ class ActiveLearning:
         for i in range(len(self.model_list)):
             hook_emb_bin.append(self.model_list[i].readout_block.readoutdict["atom_emb"][-1].register_forward_hook(get_atom_features(f"atom_emb{i}")))
 
-        embedding_cos_bin= []
+        embedding_cos_bin = []
         embedding_name_bin = []
         for data in tqdm(self.unlabelled_dataset):
             if data['name'].item() in list(bayesian_sample.keys()):
@@ -259,7 +260,7 @@ class ActiveLearning:
         sorted_indices = torch.argsort(average_similarity)
         # select the 20 least similar data points
         sample_indices = sorted_indices[:num_sample]
-        sampled_data_name=np.array(embedding_name_bin)[sample_indices]
+        sampled_data_name = np.array(embedding_name_bin)[sample_indices]
         return sampled_data_name, similarity_matrix
 
     def get_atom_embedding(self, dataset):
@@ -273,7 +274,7 @@ class ActiveLearning:
         for i in range(len(self.model_list)):
             hook_emb_bin.append(self.model_list[i].readout_block.readoutdict["atom_emb"][-1].register_forward_hook(get_atom_features(f"atom_emb{i}")))
 
-        embedding_bin= []
+        embedding_bin = []
         device = "cuda"
         for batch in tqdm(dataset):
             batch = batch_to(batch, device)
@@ -300,8 +301,8 @@ class ActiveLearning:
 
         return embedding_bin
     
-    
     def get_next_data(self, num_uncertainty, num_diversity, epsilon=0.01, save=False, plot=False, uncertainty_type="bayesian"):
+        assert uncertainty_type in UNCERTAINTY_TYPE, "sampling method should be one of 'bayesian', 'variance', 'random'"
         if uncertainty_type == "bayesian":
             bayesian_sample, criterion, expI_bin, expI_mask, total_expI_dict = self.bayesian_sampling(num_sample=num_uncertainty, epsilon=epsilon)
             label_name = "$EI$"
@@ -350,7 +351,7 @@ class ActiveLearning:
 
         pca = PCA(n_components=8).fit(X_multifidelity)
         df_pca = pca.transform(X_multifidelity)
-        with plt.style.context("scifig"):
+        with plt.style.context("seaborn-bright"):
             fig = plt.figure()
             cm = plt.cm.get_cmap("YlGnBu")
             ax = fig.add_subplot()
@@ -365,7 +366,7 @@ class ActiveLearning:
         fig.savefig(plot_name, dpi=500)
 
     def plot_diversity(self, similarity_matrix, plot_name="diversity.png"):
-        with plt.style.context("scifig"):
+        with plt.style.context("seaborn-bright"):
             fig = plt.figure()
             ax = fig.add_subplot()
             im = ax.imshow(similarity_matrix, cmap='YlGnBu_r', interpolation='nearest', vmax=1)
@@ -392,12 +393,10 @@ if __name__ == "__main__":
         model_type = "Painn"
     print(model_type)
     activelearning = ActiveLearning(models_path=model_path, dataset=dataset, total_dataset=total_dataset, model_type=model_type)
-    if args.get_data:
-        # new_data = activelearning.get_next_data(60, 20, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
-        # new_data = activelearning.get_next_data(30, 15, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
-        new_data = activelearning.get_next_data(args.num_u, args.num_d, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
-        print(f"Next Samples: {new_data}")
-        print(f"Next Samples in list: {list(new_data)}")
-    if args.uncertainty:
+
+    new_data = activelearning.get_next_data(args.num_u, args.num_d, save=args.save, plot=args.plot, uncertainty_type=args.uncertainty_type)
+    print(f"Next Samples: {new_data}")
+    print(f"Next Samples in list: {list(new_data)}")
+    if args.calc_uncertainty:
         uncertainty_targ, uncertainty_fidel = activelearning.get_uncertainty(multifidelity=args.multifidelity)
         print(f"Uncertainty {uncertainty_targ}, {uncertainty_fidel}")
