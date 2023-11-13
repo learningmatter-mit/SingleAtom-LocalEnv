@@ -21,7 +21,7 @@ from persite_painn.utils.wandb_utils import save_artifacts
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
 parser.add_argument("--data_raw", default="", type=str, help="path to raw data")
 parser.add_argument(
-    "--cache",
+    "--data_cache",
     default="dataset_cache",
     type=str,
     help="cache where data is / will be stored",
@@ -45,7 +45,7 @@ parser.add_argument(
 parser.add_argument("-b", "--batch_size", default=64, type=int, help="mini-batch size")
 parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
 parser.add_argument("--resume", default="", type=str, help="path to latest checkpoint")
-parser.add_argument("--cuda", default=3, type=int, help="GPU setting")
+parser.add_argument("--cuda", default=0, type=int, help="GPU setting")
 parser.add_argument("--device", default="cuda", type=str, help="cpu or cuda")
 parser.add_argument(
     "--early_stop_val",
@@ -100,9 +100,9 @@ def main(args):
         )
 
     # Load data
-    if os.path.exists(args.cache):
+    if os.path.exists(args.data_cache):
         print("Cached dataset exists...")
-        dataset = torch.load(args.cache)
+        dataset = torch.load(args.data_cache)
         print(f"Number of Data: {len(dataset)}")
     else:
         try:
@@ -134,7 +134,7 @@ def main(args):
 
             print(f"Number of Data: {len(dataset)}")
             print("Done creating dataset, caching...")
-            dataset.save(args.cache)
+            dataset.save(args.data_cache)
             print("Done caching dataset")
     if args.test_ids is not None and args.val_ids is not None:
         test_ids_bin = pkl.load(open(args.test_ids, 'rb'))
