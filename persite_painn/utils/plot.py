@@ -108,7 +108,7 @@ def plot_scatter(
     dec_factor=0.9,
     facecolor="#219ebc",
     edgecolor="#ffffff",
-    style='scifig'
+    style='seaborn-bright'
 ):
     new_targ = []
     new_pred = []
@@ -251,7 +251,7 @@ def plot_hexbin(
     bins=None,
     plot_helper_lines=False,
     cmap="viridis",
-    style='scifig'
+    style='seaborn-bright'
 ):
     new_targ = []
     new_pred = []
@@ -428,7 +428,7 @@ def plot_violin(
     Z_range=[22, 30],
     legend=True,
     legend_loc="lower left",
-    style='scifig'
+    style='seaborn-bright'
 ):
 
     pred_dictionary = {}
