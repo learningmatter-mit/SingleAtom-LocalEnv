@@ -2,20 +2,22 @@ import argparse
 import os
 import pickle as pkl
 import sys
-import wandb
 
 import torch
+import wandb
 from torch.utils.data import DataLoader, RandomSampler
 
-from persite_painn.data.sampler import ImbalancedDatasetSampler
 from persite_painn.data import collate_dicts
-from persite_painn.data.builder import build_dataset, split_train_validation_test
-from persite_painn.nn.builder import get_model, load_params_from_path
-from persite_painn.train.builder import get_optimizer, get_scheduler, get_loss_metric_fn
-from persite_painn.train.trainer import Trainer
-from persite_painn.train.evaluate import test_model
-from persite_painn.utils.train_utils import Normalizer
+from persite_painn.data.builder import (build_dataset,
+                                        split_train_validation_test)
 from persite_painn.data.preprocess import convert_site_prop
+from persite_painn.data.sampler import ImbalancedDatasetSampler
+from persite_painn.nn.builder import get_model, load_params_from_path
+from persite_painn.train.builder import (get_loss_metric_fn, get_optimizer,
+                                         get_scheduler)
+from persite_painn.train.evaluate import test_model
+from persite_painn.train.trainer import Trainer
+from persite_painn.utils.train_utils import Normalizer
 from persite_painn.utils.wandb_utils import save_artifacts
 
 parser = argparse.ArgumentParser(description="Per-site PaiNN")
@@ -154,7 +156,6 @@ def main(args):
         test_ids=test_ids_bin,
         val_ids=val_ids_bin
     )
-
     # Normalizer
     # normalizer = {}
     targs = []

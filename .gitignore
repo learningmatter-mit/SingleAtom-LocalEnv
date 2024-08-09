@@ -13,6 +13,7 @@ sampling_active_learning/*
 !sampling_active_learning
 examples/models/*
 !examples/models
+results
 # C extensions
 *.so
 
@@ -137,4 +138,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
 

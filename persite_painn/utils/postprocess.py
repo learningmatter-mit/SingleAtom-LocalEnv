@@ -1,6 +1,7 @@
-import torch
 import numpy as np
+import torch
 from scipy.stats import norm
+
 from persite_painn.utils.cuda import batch_to
 from persite_painn.utils.tools import get_metal_filter
 
@@ -33,15 +34,24 @@ def getdGs_tensor(output):
     #Gibbs Energy corrections for adsorbates
     dgo=zpeo +cvo -tso -(dgh2o -dgh2)
     dgoh=zpeoh +cvoh -tsoh -(dgh2o -0.5*dgh2)
-    # dgooh=zpeooh +cvooh -tsooh -(2*dgh2o -1.5*dgh2)
+    dgooh=zpeooh +cvooh -tsooh -(2*dgh2o -1.5*dgh2)
     output_dgo = output[:,0]+dgo
     output_dgoh = output[:,1]+dgoh
-    output_calculated = torch.stack((output_dgo, output_dgoh), dim= -1)
+    if output.shape[-1] == 2:
+        output_calculated = torch.stack((output_dgo, output_dgoh), dim= -1)
+    elif output.shape[-1] == 3:
+        output_dgooh = output[:,2]+dgooh
+        output_calculated = torch.stack((output_dgo, output_dgoh, output_dgooh), dim= -1)
     return output_calculated
 
 
 def getOverpotential_tensor(tensor):
-    dgooh = tensor[:,1]*0.899579759974096 + 3.3834055406273777 # Linear fitted for 82.3 % data
+    if tensor.shape[-1] == 2:
+        dgooh = tensor[:,1]*0.899579759974096 + 3.3834055406273777 # Linear fitted for 82.3 % data Previous version
+        # dgooh = tensor[:,1]*0.89175346 + 3.43511179 # Linear fitted for 82.3 % data
+    elif tensor.shape[-1] == 3:
+        dgooh = tensor[:,2] # Predicted
+
     # dgooh = tensor[:,1]+3.20
     # We calculate the OER steps and the overpotential
     dgde_oer = torch.stack((tensor[:,1], tensor[:,0]-tensor[:,1], dgooh-tensor[:,0], 4.92-dgooh), dim=1)
